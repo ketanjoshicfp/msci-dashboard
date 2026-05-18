@@ -59,6 +59,11 @@
       radial-gradient(ellipse 800px 400px at 10% -10%, rgba(201,169,110,0.06), transparent 60%),
       radial-gradient(ellipse 600px 300px at 90% 10%, rgba(74,222,128,0.03), transparent 60%);
     overflow-x: hidden;
+    animation: ambient-drift 64s ease-in-out infinite;
+  }
+  @keyframes ambient-drift {
+    0%, 100% { background-position: 0 0, 0 0; }
+    50%      { background-position: 40px -25px, -40px 30px; }
   }
 
   .container {
@@ -73,27 +78,36 @@
     grid-template-columns: 1fr auto;
     align-items: end;
     gap: 24px;
-    padding-bottom: 28px;
+    padding-bottom: 20px;
     border-bottom: 1px solid var(--line);
-    margin-bottom: 28px;
+    margin-bottom: 22px;
   }
 
   .brand-line {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     font-family: var(--font-mono);
     font-size: 11px;
     letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--accent);
-    margin-bottom: 14px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
   }
   .brand-line .dot {
     width: 6px; height: 6px; border-radius: 50%;
     background: var(--accent);
     box-shadow: 0 0 12px var(--accent);
     animation: pulse 2.6s ease-in-out infinite;
+  }
+  .brand-line .brand-sep {
+    color: var(--ink-3);
+    margin: 0 -2px;
+  }
+  .brand-line .brand-meta {
+    color: var(--ink-2);
+    letter-spacing: 0.14em;
   }
   @keyframes pulse {
     0%, 100% { opacity: 1; transform: scale(1); }
@@ -103,7 +117,7 @@
   h1.title {
     font-family: var(--font-display);
     font-weight: 400;
-    font-size: clamp(36px, 5vw, 60px);
+    font-size: clamp(28px, 3.8vw, 46px);
     line-height: 0.98;
     letter-spacing: -0.02em;
     color: var(--ink-0);
@@ -112,13 +126,6 @@
     font-style: italic;
     font-weight: 300;
     color: var(--accent);
-  }
-
-  .subtitle {
-    margin-top: 14px;
-    color: var(--ink-2);
-    font-size: 14px;
-    max-width: 620px;
   }
 
   .header-controls {
@@ -523,6 +530,14 @@
     cursor: grab;
   }
   #worldMap:active { cursor: grabbing; }
+  /* Ocean sphere — first <path> of the SVG — gets a subtle breath */
+  #worldMap > path:first-of-type {
+    animation: ocean-breath 7.5s ease-in-out infinite;
+  }
+  @keyframes ocean-breath {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.88; }
+  }
 
   .country-path {
     fill: var(--bg-3);
@@ -664,6 +679,7 @@
     padding: 4px 8px;
     margin: 0 -8px;
     border-radius: 2px;
+    cursor: pointer;
   }
   .mover-row:hover { background: var(--bg-2); }
   .mover-row .country {
@@ -785,6 +801,23 @@
     color: var(--ink-0);
     background: rgba(201, 169, 110, 0.04);
     font-weight: 600;
+  }
+
+  /* Linked-focus highlight (when clicking from map/treemap into a table row) */
+  table.data-table tbody tr.focused {
+    animation: row-focus-flash 2.2s var(--ease-out);
+  }
+  @keyframes row-focus-flash {
+    0%   { background: rgba(201, 169, 110, 0.32); box-shadow: inset 2px 0 0 var(--accent), inset -2px 0 0 var(--accent); }
+    30%  { background: rgba(201, 169, 110, 0.20); box-shadow: inset 2px 0 0 var(--accent), inset -2px 0 0 var(--accent); }
+    100% { background: transparent; box-shadow: inset 0 0 0 transparent; }
+  }
+
+  /* Map highlight when hovering a table row */
+  .country-path.row-hover {
+    stroke: var(--accent) !important;
+    stroke-width: 2 !important;
+    filter: brightness(1.35);
   }
 
   .rank { color: var(--ink-3); font-size: 11px; }
@@ -1017,6 +1050,154 @@
     letter-spacing: 0.04em;
   }
 
+  /* ==================== TREEMAP ==================== */
+  .treemap-wrap {
+    position: relative;
+    width: 100%;
+  }
+  #treemap {
+    width: 100%;
+    height: 620px;
+    display: block;
+  }
+  .tm-region-label {
+    fill: var(--ink-2);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    pointer-events: none;
+  }
+  .tm-region-rect {
+    fill: var(--bg-2);
+    stroke: var(--line-2);
+    stroke-width: 1;
+    pointer-events: none;
+  }
+  .tm-cell {
+    cursor: pointer;
+    transition: opacity 0.2s var(--ease-out);
+  }
+  .tm-cell rect.tm-fill {
+    transition: filter 0.2s var(--ease-out), stroke-width 0.15s var(--ease-out);
+    stroke: var(--bg-0);
+    stroke-width: 1;
+  }
+  .tm-cell:hover rect.tm-fill {
+    filter: brightness(1.25);
+    stroke: var(--accent);
+    stroke-width: 2;
+  }
+  .tm-cell text {
+    pointer-events: none;
+  }
+  .tm-flag {
+    font-size: 18px;
+    dominant-baseline: middle;
+  }
+  .tm-name {
+    fill: rgba(244, 241, 234, 0.95);
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 500;
+    dominant-baseline: middle;
+  }
+  .tm-value {
+    fill: rgba(244, 241, 234, 0.85);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    dominant-baseline: middle;
+  }
+
+  /* ==================== INSIGHT STRIP ==================== */
+  .insight-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    margin-bottom: 28px;
+    min-height: 116px;
+  }
+  .insight-chip {
+    background: var(--bg-1);
+    padding: 18px 22px;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.25s var(--ease-out);
+  }
+  .insight-chip:hover { background: var(--bg-2); }
+  .insight-chip::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 2px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.5s var(--ease-out);
+  }
+  .insight-chip:hover::before { transform: scaleX(1); }
+  .insight-chip .insight-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .insight-chip .insight-label::before {
+    content: '';
+    width: 4px; height: 4px;
+    background: var(--accent);
+    border-radius: 50%;
+  }
+  .insight-chip .insight-title {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 400;
+    color: var(--ink-0);
+    line-height: 1.05;
+    margin-bottom: 4px;
+    letter-spacing: -0.01em;
+  }
+  .insight-chip .insight-title em {
+    font-style: italic;
+    color: var(--accent);
+  }
+  .insight-chip .insight-value {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-1);
+    font-variant-numeric: tabular-nums;
+    margin-bottom: 4px;
+  }
+  .insight-chip .insight-value.pos { color: var(--pos); }
+  .insight-chip .insight-value.neg { color: var(--neg); }
+  .insight-chip .insight-sub {
+    font-size: 11px;
+    color: var(--ink-3);
+    line-height: 1.4;
+  }
+
+  /* ==================== FLAGS ==================== */
+  .flag {
+    display: inline-block;
+    font-size: 1.05em;
+    margin-right: 7px;
+    transform: translateY(0.05em);
+    filter: saturate(1.1);
+    font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+  }
+  .tooltip-country .flag { margin-right: 8px; font-size: 18px; }
+  .summary-meta .flag { margin-right: 6px; font-size: 14px; }
+  .mover-row .flag { margin-right: 6px; font-size: 13px; }
+  td .flag { margin-right: 7px; font-size: 13px; }
+
   /* ==================== TIMESTAMPS ==================== */
   .timestamps-row {
     display: flex;
@@ -1075,9 +1256,13 @@
   <!-- ===== HEADER ===== -->
   <header class="masthead">
     <div>
-      <div class="brand-line"><span class="dot"></span><span>Live Markets Terminal</span></div>
+      <div class="brand-line">
+        <span class="dot"></span>
+        <span>Live Markets Terminal</span>
+        <span class="brand-sep">·</span>
+        <span class="brand-meta" id="brandMeta">— markets</span>
+      </div>
       <h1 class="title">MSCI World <em>Markets</em></h1>
-      <p class="subtitle">A cross-section of 44 developed and emerging equity markets, tracked by daily, month-to-date, quarter, year-to-date and multi-year returns.</p>
     </div>
     <div class="header-controls">
       <div class="timestamps-row">
@@ -1159,6 +1344,9 @@
 
   <!-- ===== TAB: OVERVIEW ===== -->
   <section class="tab-panel active" id="tab-overview">
+
+    <!-- Auto-generated insight chips -->
+    <div class="insight-strip" id="insightStrip"></div>
 
     <!-- Summary cards -->
     <div class="summary-grid">
@@ -1281,6 +1469,14 @@
   <!-- ===== TAB: COMPARE ===== -->
   <section class="tab-panel" id="tab-compare">
     <div class="chart-card reveal">
+      <h3>Country <em>Treemap</em></h3>
+      <div class="chart-meta" id="treemapMeta">Grouped by region · coloured by 1Y · click a country to inspect</div>
+      <div class="treemap-wrap">
+        <svg id="treemap"></svg>
+        <div class="tooltip" id="treemapTooltip"></div>
+      </div>
+    </div>
+    <div class="chart-card reveal">
       <h3>Performance <em>Ranking</em></h3>
       <div class="chart-meta" id="barChartMeta">All visible markets · sorted by 1Y</div>
       <div class="chart-canvas-wrap">
@@ -1374,7 +1570,27 @@ const COUNTRY_META = {
   'Greece':        { iso: '300', region: 'EMEA',         type: 'Emerging' }
 };
 
-// ---------- METRIC LABELS ----------
+// ---------- COUNTRY FLAGS (Unicode regional indicator pairs) ----------
+const COUNTRY_FLAGS = {
+  'USA': '🇺🇸', 'Canada': '🇨🇦', 'Mexico': '🇲🇽', 'Brazil': '🇧🇷',
+  'Chile': '🇨🇱', 'Colombia': '🇨🇴', 'Peru': '🇵🇪',
+  'United Kingdom': '🇬🇧', 'France': '🇫🇷', 'Germany': '🇩🇪',
+  'Italy': '🇮🇹', 'Spain': '🇪🇸', 'Netherlands': '🇳🇱',
+  'Belgium': '🇧🇪', 'Switzerland': '🇨🇭', 'Austria': '🇦🇹',
+  'Denmark': '🇩🇰', 'Finland': '🇫🇮', 'Norway': '🇳🇴',
+  'Sweden': '🇸🇪', 'Ireland': '🇮🇪', 'Portugal': '🇵🇹',
+  'Greece': '🇬🇷', 'Poland': '🇵🇱', 'Turkey': '🇹🇷',
+  'Israel': '🇮🇱', 'Egypt': '🇪🇬', 'South Africa': '🇿🇦',
+  'Saudi Arabia': '🇸🇦', 'UAE': '🇦🇪', 'Qatar': '🇶🇦',
+  'Japan': '🇯🇵', 'China': '🇨🇳', 'Hong Kong': '🇭🇰',
+  'Korea': '🇰🇷', 'Taiwan': '🇹🇼', 'India': '🇮🇳',
+  'Indonesia': '🇮🇩', 'Malaysia': '🇲🇾', 'Philippines': '🇵🇭',
+  'Singapore': '🇸🇬', 'Thailand': '🇹🇭', 'Australia': '🇦🇺',
+  'New Zealand': '🇳🇿'
+};
+function flag(country) {
+  return COUNTRY_FLAGS[country] || '';
+}
 const METRIC_LABELS = {
   day:      '1D',
   mtd:      'MTD',
@@ -1649,6 +1865,7 @@ function renderAll() {
   const values = state.filtered.map(d => d[state.metric]);
   state.colorScale = buildColorScale(values);
 
+  renderInsightStrip();
   renderSummary();
   renderMovers();
   updateMapColors();
@@ -1657,6 +1874,7 @@ function renderAll() {
   renderStatsStrip();
   renderBarChart();
   renderHistogram();
+  renderTreemap();
   updateMetricLabels();
 }
 
@@ -1669,6 +1887,108 @@ function updateMetricLabels() {
   document.getElementById('sumAvgLabel').textContent = `Average ${m} Return`;
   document.getElementById('barChartMeta').textContent = `All visible markets · sorted by ${m}`;
   document.getElementById('histChartMeta').textContent = `Histogram · ${m} returns across visible markets`;
+  const tmMeta = document.getElementById('treemapMeta');
+  if (tmMeta) tmMeta.textContent = `Grouped by region · coloured by ${m} · click a country to inspect`;
+}
+
+// ============================================================
+// NARRATIVE INSIGHTS
+// ============================================================
+function generateInsights(data, metric) {
+  const insights = [];
+  if (!data.length) return insights;
+
+  const validRows = data.filter(d => Number.isFinite(d[metric]));
+  if (!validRows.length) return insights;
+
+  const values = validRows.map(d => d[metric]);
+  const mean  = values.reduce((s, v) => s + v, 0) / values.length;
+
+  // 1. Top region by average
+  const byRegion = {};
+  validRows.forEach(d => {
+    if (!byRegion[d.region]) byRegion[d.region] = [];
+    byRegion[d.region].push(d[metric]);
+  });
+  const regionStats = Object.entries(byRegion).map(([region, vals]) => ({
+    region,
+    avg: vals.reduce((s, v) => s + v, 0) / vals.length,
+    min: Math.min(...vals),
+    max: Math.max(...vals),
+    count: vals.length
+  }));
+  const topRegion = [...regionStats].sort((a, b) => b.avg - a.avg)[0];
+  if (topRegion) {
+    insights.push({
+      label: 'Region leader',
+      title: `<em>${topRegion.region}</em>`,
+      value: fmtPct(topRegion.avg),
+      valueClass: pctClass(topRegion.avg),
+      sub: `Average across ${topRegion.count} markets in this region`
+    });
+  }
+
+  // 2. Most polarized region (widest range)
+  const polarized = [...regionStats]
+    .filter(r => r.count >= 2)
+    .sort((a, b) => (b.max - b.min) - (a.max - a.min))[0];
+  if (polarized) {
+    insights.push({
+      label: 'Most divided',
+      title: `<em>${polarized.region}</em>`,
+      value: `${fmtPct(polarized.min)} ↔ ${fmtPct(polarized.max)}`,
+      sub: 'Widest performance spread'
+    });
+  }
+
+  // 3. DM vs EM
+  const dm = validRows.filter(d => d.type === 'Developed').map(d => d[metric]);
+  const em = validRows.filter(d => d.type === 'Emerging').map(d => d[metric]);
+  if (dm.length && em.length) {
+    const dmAvg = dm.reduce((s, v) => s + v, 0) / dm.length;
+    const emAvg = em.reduce((s, v) => s + v, 0) / em.length;
+    const leader = emAvg > dmAvg ? 'Emerging' : 'Developed';
+    const gap = Math.abs(emAvg - dmAvg);
+    insights.push({
+      label: 'Type leader',
+      title: `<em>${leader}</em> markets`,
+      value: `${fmtPct(gap)} edge`,
+      valueClass: 'pos',
+      sub: `EM avg ${fmtPct(emAvg)} vs DM avg ${fmtPct(dmAvg)}`
+    });
+  }
+
+  // 4. Market breadth (up vs down)
+  const upCount = values.filter(v => v > 0).length;
+  const downCount = values.filter(v => v < 0).length;
+  const upPct = Math.round(upCount / values.length * 100);
+  insights.push({
+    label: 'Market breadth',
+    title: `<em>${upCount}↑</em> / ${downCount}↓`,
+    value: `${upPct}% positive`,
+    valueClass: upPct >= 50 ? 'pos' : 'neg',
+    sub: `Across ${values.length} visible markets · mean ${fmtPct(mean)}`
+  });
+
+  return insights;
+}
+
+function renderInsightStrip() {
+  const strip = document.getElementById('insightStrip');
+  if (!strip) return;
+  const insights = generateInsights(state.filtered, state.metric);
+  if (!insights.length) {
+    strip.innerHTML = '<div class="insight-chip"><div class="insight-sub">No data to analyse with current filters.</div></div>';
+    return;
+  }
+  strip.innerHTML = insights.map(i => `
+    <div class="insight-chip">
+      <div class="insight-label">${i.label}</div>
+      <div class="insight-title">${i.title}</div>
+      <div class="insight-value ${i.valueClass || ''}">${i.value}</div>
+      <div class="insight-sub">${i.sub}</div>
+    </div>
+  `).join('');
 }
 
 // ============================================================
@@ -1707,12 +2027,12 @@ function renderSummary() {
   const bestEl = document.getElementById('sumBest');
   setTweenedValue(bestEl, best[m]);
   bestEl.className = 'summary-value ' + pctClass(best[m]);
-  document.getElementById('sumBestName').textContent = best.country;
+  document.getElementById('sumBestName').innerHTML = `<span class="flag">${flag(best.country)}</span>${best.country}`;
 
   const worstEl = document.getElementById('sumWorst');
   setTweenedValue(worstEl, worst[m]);
   worstEl.className = 'summary-value ' + pctClass(worst[m]);
-  document.getElementById('sumWorstName').textContent = worst.country;
+  document.getElementById('sumWorstName').innerHTML = `<span class="flag">${flag(worst.country)}</span>${worst.country}`;
 }
 
 // ============================================================
@@ -1737,8 +2057,8 @@ function renderMovers() {
     const pct = Math.max(2, Math.abs(v) / maxAbs * 100);
     const cls = v >= 0 ? 'pos' : 'neg';
     return `
-      <li class="mover-row">
-        <span class="country">${d.country}</span>
+      <li class="mover-row" data-country="${d.country}">
+        <span class="country"><span class="flag">${flag(d.country)}</span>${d.country}</span>
         <span class="bar"><span class="fill ${cls}" style="width:${pct.toFixed(1)}%"></span></span>
         <span class="value ${cls}">${fmtPct(v)}</span>
       </li>
@@ -1809,7 +2129,7 @@ function renderTable() {
       return `
         <tr data-country="${d.country}">
           <td><span class="rank">${String(i + 1).padStart(2, '0')}</span></td>
-          <td>${d.country}</td>
+          <td><span class="flag">${flag(d.country)}</span>${d.country}</td>
           <td>${d.region}</td>
           <td><span class="badge ${d.type === 'Developed' ? 'dev' : 'emerg'}">${d.type}</span></td>
           ${cell(d.day, 'day')}
@@ -1973,6 +2293,186 @@ function renderHistogram() {
 }
 
 // ============================================================
+// LINKED INTERACTIVITY (map ↔ table ↔ treemap)
+// ============================================================
+function focusCountry(countryName) {
+  setActiveTab('markets');
+  // wait briefly for the tab fade-in
+  setTimeout(() => {
+    const row = document.querySelector(`#tableBody tr[data-country="${CSS.escape(countryName)}"]`);
+    if (!row) return;
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    row.classList.remove('focused');
+    void row.offsetWidth;  // force reflow so the animation restarts
+    row.classList.add('focused');
+    setTimeout(() => row.classList.remove('focused'), 2600);
+  }, 280);
+}
+
+function pulseMapCountry(countryName) {
+  if (!state.g) return;
+  const meta = COUNTRY_META[countryName];
+  if (!meta) return;
+  state.g.selectAll('path.country-path').classed('row-hover', false);
+  state.g.selectAll('path.country-path')
+    .filter(function(d) { return String(d.id).padStart(3, '0') === meta.iso; })
+    .classed('row-hover', true);
+}
+
+function clearMapPulse() {
+  if (!state.g) return;
+  state.g.selectAll('path.country-path').classed('row-hover', false);
+}
+
+// ============================================================
+// TREEMAP
+// ============================================================
+function renderTreemap() {
+  const svg = d3.select('#treemap');
+  if (svg.empty()) return;
+  const m = state.metric;
+  const data = state.filtered.filter(d => Number.isFinite(d[m]));
+
+  svg.selectAll('*').remove();
+
+  if (!data.length) {
+    return;
+  }
+
+  const node = svg.node();
+  const width = node.getBoundingClientRect().width || 1400;
+  const height = 620;
+  svg.attr('viewBox', `0 0 ${width} ${height}`);
+
+  // Group countries by region
+  const regionMap = {};
+  data.forEach(d => {
+    if (!regionMap[d.region]) regionMap[d.region] = [];
+    regionMap[d.region].push(d);
+  });
+
+  // Build hierarchy with equal weight per country (so visual area = country count per region)
+  const root = d3.hierarchy({
+    children: Object.entries(regionMap).map(([region, items]) => ({
+      name: region,
+      children: items.map(d => ({ name: d.country, data: d, value: 1 }))
+    }))
+  })
+  .sum(d => d.value)
+  .sort((a, b) => b.value - a.value);
+
+  d3.treemap()
+    .size([width, height])
+    .paddingOuter(6)
+    .paddingTop(28)
+    .paddingInner(3)
+    .round(true)(root);
+
+  // Region backdrops and labels
+  const regions = svg.selectAll('g.tm-region')
+    .data(root.children || [])
+    .join('g')
+    .attr('class', 'tm-region');
+
+  regions.append('rect')
+    .attr('class', 'tm-region-rect')
+    .attr('x', d => d.x0)
+    .attr('y', d => d.y0)
+    .attr('width', d => d.x1 - d.x0)
+    .attr('height', d => d.y1 - d.y0);
+
+  regions.append('text')
+    .attr('class', 'tm-region-label')
+    .attr('x', d => d.x0 + 8)
+    .attr('y', d => d.y0 + 18)
+    .text(d => d.data.name);
+
+  // Country cells
+  const cells = svg.selectAll('g.tm-cell')
+    .data(root.leaves())
+    .join('g')
+    .attr('class', 'tm-cell')
+    .attr('transform', d => `translate(${d.x0},${d.y0})`)
+    .on('mousemove', (e, d) => handleTreemapHover(e, d.data.data))
+    .on('mouseleave', () => document.getElementById('treemapTooltip').classList.remove('visible'))
+    .on('click', (e, d) => focusCountry(d.data.name));
+
+  cells.append('rect')
+    .attr('class', 'tm-fill')
+    .attr('width', d => Math.max(0, d.x1 - d.x0))
+    .attr('height', d => Math.max(0, d.y1 - d.y0))
+    .style('fill', d => state.colorScale.fn(d.data.data[m]))
+    .style('opacity', 0)
+    .transition()
+    .duration(550)
+    .ease(d3.easeCubicOut)
+    .style('opacity', 1);
+
+  // Labels inside cells — only render if there's room
+  cells.each(function(d) {
+    const w = d.x1 - d.x0;
+    const h = d.y1 - d.y0;
+    const cell = d3.select(this);
+    const cy = h / 2;
+    const showFlag = w >= 70 && h >= 44;
+    const showName = w >= 76 && h >= 30;
+    const showValue = w >= 60 && h >= 56;
+
+    if (showFlag) {
+      cell.append('text')
+        .attr('class', 'tm-flag')
+        .attr('x', 9)
+        .attr('y', cy)
+        .text(flag(d.data.name));
+    }
+    if (showName) {
+      const nameSize = w > 140 ? 14 : (w > 100 ? 12 : 11);
+      cell.append('text')
+        .attr('class', 'tm-name')
+        .attr('x', showFlag ? 36 : 9)
+        .attr('y', showValue ? cy - 9 : cy)
+        .style('font-size', nameSize + 'px')
+        .text(d.data.name);
+    }
+    if (showValue) {
+      cell.append('text')
+        .attr('class', 'tm-value')
+        .attr('x', showFlag ? 36 : 9)
+        .attr('y', cy + 10)
+        .text(fmtPct(d.data.data[m]));
+    }
+  });
+}
+
+function handleTreemapHover(event, record) {
+  const tooltip = document.getElementById('treemapTooltip');
+  if (!tooltip || !record) return;
+  const row = (lbl, v) => `<div class="tooltip-row"><span class="lbl">${lbl}</span><span class="val ${pctClass(v)}">${fmtPct(v)}</span></div>`;
+  tooltip.innerHTML = `
+    <div class="tooltip-country"><span class="flag">${flag(record.country)}</span>${record.country}</div>
+    <div class="tooltip-region">${record.region} · ${record.type}</div>
+    ${row('1D', record.day)}
+    ${row('MTD', record.mtd)}
+    ${row('3MTD', record.threeMtd)}
+    ${row('YTD', record.ytd)}
+    ${row('1Y', record.oneYr)}
+    ${row('3Y', record.threeYr)}
+    ${row('5Y', record.fiveYr)}
+    ${row('10Y', record.tenYr)}
+  `;
+  const wrap = document.querySelector('.treemap-wrap');
+  const wrapRect = wrap.getBoundingClientRect();
+  let x = event.clientX - wrapRect.left + 14;
+  let y = event.clientY - wrapRect.top + 14;
+  const ttW = 220, ttH = 280;
+  if (x + ttW > wrapRect.width) x = event.clientX - wrapRect.left - ttW - 14;
+  if (y + ttH > wrapRect.height) y = event.clientY - wrapRect.top - ttH - 14;
+  tooltip.style.left = x + 'px';
+  tooltip.style.top = y + 'px';
+  tooltip.classList.add('visible');
+}
+
+// ============================================================
 // MAP
 // ============================================================
 async function initMap() {
@@ -2007,7 +2507,12 @@ async function initMap() {
       .attr('d', state.path)
       .attr('data-id', d => String(d.id).padStart(3, '0'))
       .on('mousemove', handleMapHover)
-      .on('mouseleave', () => document.getElementById('mapTooltip').classList.remove('visible'));
+      .on('mouseleave', () => document.getElementById('mapTooltip').classList.remove('visible'))
+      .on('click', function(event, d) {
+        const id = String(d.id).padStart(3, '0');
+        const meta = Object.entries(COUNTRY_META).find(([_, m]) => m.iso === id);
+        if (meta) focusCountry(meta[0]);
+      });
 
     state.zoom = d3.zoom()
       .scaleExtent([1, 8])
@@ -2081,7 +2586,7 @@ function handleMapHover(event, d) {
   }
   const row = (lbl, v) => `<div class="tooltip-row"><span class="lbl">${lbl}</span><span class="val ${pctClass(v)}">${fmtPct(v)}</span></div>`;
   tooltip.innerHTML = `
-    <div class="tooltip-country">${record.country}</div>
+    <div class="tooltip-country"><span class="flag">${flag(record.country)}</span>${record.country}</div>
     <div class="tooltip-region">${record.region} · ${record.type}</div>
     ${row('1D', record.day)}
     ${row('MTD', record.mtd)}
@@ -2111,9 +2616,10 @@ function setActiveTab(name) {
   state.activeTab = name;
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
-  // Charts in hidden tabs sometimes lose size; resize on activation
+  // Visualizations hidden in inactive tabs lose their measured size; re-render on activation
   setTimeout(() => {
     if (name === 'compare') {
+      renderTreemap();
       if (state.barChart) state.barChart.resize();
       if (state.histChart) state.histChart.resize();
     }
@@ -2217,6 +2723,14 @@ async function loadAndRender({ force = false } = {}) {
     document.getElementById('footerMeta').textContent =
       `Source: ${meta.source || '—'} · ${state.data.length} markets · Refreshed ${fmtTimestamp(ts)}`;
     renderDataSourceBanner(meta);
+
+    // Update brand-line metadata
+    const dmCount = state.data.filter(d => d.type === 'Developed').length;
+    const emCount = state.data.filter(d => d.type === 'Emerging').length;
+    const brandMeta = document.getElementById('brandMeta');
+    if (brandMeta) {
+      brandMeta.textContent = `${state.data.length} markets · ${dmCount} DM · ${emCount} EM`;
+    }
 
     if (state.data.length === 0) {
       showError('No market data yet. The GitHub Action may still be running — try Refresh in a few minutes, or check the Actions tab.');
@@ -2329,6 +2843,22 @@ function wireEvents() {
         state.sort.dir = ['country', 'region', 'type'].includes(key) ? 'asc' : 'desc';
       }
       renderTable();
+    });
+  });
+
+  // Table row hover pulses the country on the map (event delegation)
+  const tbody = document.getElementById('tableBody');
+  tbody.addEventListener('mouseover', (e) => {
+    const tr = e.target.closest('tr[data-country]');
+    if (tr) pulseMapCountry(tr.dataset.country);
+  });
+  tbody.addEventListener('mouseleave', clearMapPulse);
+
+  // Top movers click → focus country
+  document.querySelectorAll('.movers-list').forEach(list => {
+    list.addEventListener('click', (e) => {
+      const row = e.target.closest('.mover-row[data-country]');
+      if (row) focusCountry(row.dataset.country);
     });
   });
 
