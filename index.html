@@ -1440,21 +1440,21 @@ function buildColorScale(values) {
     const range = Math.max(Math.abs(p5), Math.abs(p95));
     fn = d3.scaleLinear()
       .domain([-range, -range * 0.4, 0, range * 0.4, range])
-      .range(['#7f1d1d', '#ef4444', '#374151', '#22c55e', '#15803d'])
+      .range(['#7f1d1d', '#ef4444', '#6b7280', '#22c55e', '#15803d'])
       .interpolate(d3.interpolateRgb)
       .clamp(true);
   } else if (lo >= 0) {
     // All positive: green gradient
     fn = d3.scaleLinear()
       .domain([lo, (lo + hi) / 2, hi])
-      .range(['#374151', '#22c55e', '#15803d'])
+      .range(['#6b7280', '#22c55e', '#15803d'])
       .interpolate(d3.interpolateRgb)
       .clamp(true);
   } else {
     // All negative: red gradient
     fn = d3.scaleLinear()
       .domain([lo, (lo + hi) / 2, hi])
-      .range(['#7f1d1d', '#ef4444', '#374151'])
+      .range(['#7f1d1d', '#ef4444', '#6b7280'])
       .interpolate(d3.interpolateRgb)
       .clamp(true);
   }
@@ -1862,20 +1862,26 @@ function updateMapColors() {
     const meta = COUNTRY_META[d.country];
     if (meta) dataByIso[meta.iso] = d;
   });
+
+  // Use .style() not .attr() — CSS rules override SVG presentation attributes,
+  // but inline styles win over both. Without this, the .country-path CSS rule
+  // ("fill: var(--bg-3)") will defeat anything we set via .attr('fill').
   state.g.selectAll('path.country-path')
     .each(function(d) {
       const id = String(d.id).padStart(3, '0');
       const record = dataByIso[id];
-      const sel = d3.select(this);
+      d3.select(this).classed('has-data', !!(record && Number.isFinite(record[m])));
+    })
+    .transition()
+    .duration(600)
+    .ease(d3.easeCubicInOut)
+    .style('fill', function(d) {
+      const id = String(d.id).padStart(3, '0');
+      const record = dataByIso[id];
       if (record && Number.isFinite(record[m])) {
-        sel.classed('has-data', true)
-           .transition().duration(600).ease(d3.easeCubicInOut)
-           .attr('fill', state.colorScale.fn(record[m]));
-      } else {
-        sel.classed('has-data', false)
-           .transition().duration(600).ease(d3.easeCubicInOut)
-           .attr('fill', '#1c2230');
+        return state.colorScale.fn(record[m]);
       }
+      return '#1c2230';
     });
 }
 
