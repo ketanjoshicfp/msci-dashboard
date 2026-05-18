@@ -2,13 +2,11 @@ name: Scrape MSCI daily
 
 on:
   schedule:
-    # 23:00 UTC every weekday (after US market close).
-    # MSCI publishes EOD around 18:30 EDT (~22:30/23:30 UTC depending on DST).
     - cron: '0 23 * * 1-5'
-  workflow_dispatch: {}   # allow manual trigger from the Actions tab
+  workflow_dispatch: {}
 
 permissions:
-  contents: write   # needed for the bot to commit the updated JSON
+  contents: write
 
 concurrency:
   group: scrape-msci
@@ -39,9 +37,17 @@ jobs:
 
       - name: Run scraper
         id: scrape
-        run: |
-          python scripts/scrape_msci.py
+        run: python scripts/scrape_msci.py
         continue-on-error: true
+
+      - name: Upload debug artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: msci-debug-${{ github.run_id }}
+          path: debug/
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Show output
         if: always()
