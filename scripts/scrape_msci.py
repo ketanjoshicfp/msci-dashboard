@@ -169,8 +169,11 @@ async def scrape_msci_playwright(debug_dir):
     print(f"\n[MSCI] === FINAL RESULTS: {len(all_results)} countries ===")
     for c in sorted(all_results.keys()):
         r = all_results[c]
-        print(f"[MSCI]   {c:18s} 1D={r.get('day',0):+6.2f}  MTD={r.get('mtd',0):+6.2f}  "
-              f"YTD={r.get('ytd',0):+7.2f}  1Y={r.get('oneYr',0):+7.2f}")
+        def f(v): return f"{v:+6.2f}" if isinstance(v, (int, float)) else "  --  "
+        print(f"[MSCI]   {c:18s} "
+              f"1D={f(r.get('day'))}  MTD={f(r.get('mtd'))}  3MTD={f(r.get('threeMtd'))}  "
+              f"YTD={f(r.get('ytd'))}  1Y={f(r.get('oneYr'))}  3Y={f(r.get('threeYr'))}  "
+              f"5Y={f(r.get('fiveYr'))}  10Y={f(r.get('tenYr'))}")
 
     return all_results
 
@@ -275,10 +278,12 @@ def parse_msci_tables(tables):
        row[2] = Last price (numeric, large)
        row[3] = Day %
        row[4] = MTD %
-       row[5] = 3MTD %    (we skip this)
+       row[5] = 3MTD %
        row[6] = YTD %
        row[7] = 1 Yr %
-       row[8+] = 3 Yr, 5 Yr, 10 Yr (we ignore)
+       row[8] = 3 Yr % (annualised)
+       row[9] = 5 Yr % (annualised)
+       row[10] = 10 Yr % (annualised)
     """
     results = {}
     aliases = build_country_aliases()
@@ -312,20 +317,28 @@ def parse_msci_tables(tables):
                 continue  # not a data row in expected format
 
             # Parse the metric cells by position
-            day   = parse_pct(row[3])
-            mtd   = parse_pct(row[4])
-            ytd   = parse_pct(row[6])  # skip 3MTD at row[5]
-            oneYr = parse_pct(row[7])
+            day      = parse_pct(row[3])
+            mtd      = parse_pct(row[4])
+            threeMtd = parse_pct(row[5])
+            ytd      = parse_pct(row[6])
+            oneYr    = parse_pct(row[7])
+            threeYr  = parse_pct(row[8])  if len(row) > 8  else None
+            fiveYr   = parse_pct(row[9])  if len(row) > 9  else None
+            tenYr    = parse_pct(row[10]) if len(row) > 10 else None
 
             # Sanity check: day return should be small in absolute terms
             if day is None or abs(day) > 25:
                 continue
 
             results[canonical] = {
-                'day':   day,
-                'mtd':   mtd,
-                'ytd':   ytd,
-                'oneYr': oneYr,
+                'day':      day,
+                'mtd':      mtd,
+                'threeMtd': threeMtd,
+                'ytd':      ytd,
+                'oneYr':    oneYr,
+                'threeYr':  threeYr,
+                'fiveYr':   fiveYr,
+                'tenYr':    tenYr,
             }
 
     return results
@@ -367,35 +380,66 @@ def fetch_etf_returns():
     print("[ETF] Fetching country ETF prices from Yahoo Finance...")
     results = {}
 
+    def anchor_close(closes, target_date):
+        """Find the closest close price to a target date (within trading days)."""
+        if len(closes) == 0:
+            return None
+        diffs = [(abs((d.date() - target_date).days), float(closes.loc[d])) for d in closes.index]
+        return min(diffs, key=lambda x: x[0])[1]
+
+    def ann_return(last_close, anchor, years):
+        """Annualised return given last price, anchor price, and years between."""
+        if anchor is None or anchor <= 0 or years <= 0:
+            return None
+        return round(((last_close / anchor) ** (1.0 / years) - 1) * 100, 2)
+
     for country, meta in MARKETS.items():
         ticker_sym = meta['etf']
         try:
             t = yf.Ticker(ticker_sym, session=session) if session else yf.Ticker(ticker_sym)
-            hist = t.history(period='14mo', interval='1d', auto_adjust=True)
+            # Pull max available history so 10Y is computable
+            hist = t.history(period='max', interval='1d', auto_adjust=True)
             if hist is None or len(hist) == 0:
                 continue
             closes = hist['Close'].dropna().sort_index()
             if len(closes) < 30:
                 continue
+
             last_date = closes.index[-1].date()
             last_close = float(closes.iloc[-1])
             prev_close = float(closes.iloc[-2])
+
             this_month_start = last_date.replace(day=1)
             prev_month_closes = closes[closes.index.date < this_month_start]
             month_anchor = float(prev_month_closes.iloc[-1]) if len(prev_month_closes) else float(closes.iloc[0])
+
+            # 3MTD = trailing 3 calendar months from last_date
+            target_3m = last_date - timedelta(days=91)
+            three_m_anchor = anchor_close(closes, target_3m)
+
             this_year_start = last_date.replace(month=1, day=1)
             prev_year_closes = closes[closes.index.date < this_year_start]
             year_anchor = float(prev_year_closes.iloc[-1]) if len(prev_year_closes) else float(closes.iloc[0])
-            target = last_date - timedelta(days=365)
-            one_yr_anchor = min(
-                [(abs((d.date() - target).days), float(closes.loc[d])) for d in closes.index],
-                key=lambda x: x[0]
-            )[1]
+
+            one_yr_anchor   = anchor_close(closes, last_date - timedelta(days=365))
+            three_yr_anchor = anchor_close(closes, last_date - timedelta(days=365 * 3))
+            five_yr_anchor  = anchor_close(closes, last_date - timedelta(days=365 * 5))
+            ten_yr_anchor   = anchor_close(closes, last_date - timedelta(days=365 * 10))
+
+            # Verify the anchor dates are actually old enough — if the ETF is newer
+            # than e.g. 5 years, the 5Y anchor will just be the earliest available close.
+            oldest_avail = closes.index[0].date()
+            yrs_available = (last_date - oldest_avail).days / 365.25
+
             results[country] = {
-                'day':   round((last_close / prev_close - 1) * 100, 2),
-                'mtd':   round((last_close / month_anchor - 1) * 100, 2),
-                'ytd':   round((last_close / year_anchor - 1) * 100, 2),
-                'oneYr': round((last_close / one_yr_anchor - 1) * 100, 2),
+                'day':      round((last_close / prev_close   - 1) * 100, 2),
+                'mtd':      round((last_close / month_anchor - 1) * 100, 2),
+                'threeMtd': round((last_close / three_m_anchor - 1) * 100, 2) if three_m_anchor else None,
+                'ytd':      round((last_close / year_anchor  - 1) * 100, 2),
+                'oneYr':    round((last_close / one_yr_anchor - 1) * 100, 2) if one_yr_anchor else None,
+                'threeYr':  ann_return(last_close, three_yr_anchor, 3) if yrs_available >= 3 else None,
+                'fiveYr':   ann_return(last_close, five_yr_anchor,  5) if yrs_available >= 5 else None,
+                'tenYr':    ann_return(last_close, ten_yr_anchor,  10) if yrs_available >= 10 else None,
             }
         except Exception as e:
             print(f"[ETF] {country:18s} {ticker_sym:6s}  ERROR: {type(e).__name__}: {e}", file=sys.stderr)
@@ -411,7 +455,10 @@ def validate_sources(msci_data, etf_data, threshold=2.0):
     print(f"\n[VALIDATE] Comparing MSCI vs ETF (threshold: {threshold}%)...")
     discrepancies = []
     compared = 0
-    metric_labels = {'day': '1D', 'mtd': 'MTD', 'ytd': 'YTD', 'oneYr': '1Y'}
+    metric_labels = {
+        'day': '1D', 'mtd': 'MTD', 'threeMtd': '3MTD', 'ytd': 'YTD',
+        'oneYr': '1Y', 'threeYr': '3Y', 'fiveYr': '5Y', 'tenYr': '10Y',
+    }
 
     for country in MARKETS:
         if country not in msci_data or country not in etf_data:
@@ -419,7 +466,7 @@ def validate_sources(msci_data, etf_data, threshold=2.0):
         compared += 1
         m = msci_data[country]
         e = etf_data[country]
-        for metric in ('day', 'mtd', 'ytd', 'oneYr'):
+        for metric in metric_labels:
             mv = m.get(metric); ev = e.get(metric)
             if mv is None or ev is None: continue
             diff = round(mv - ev, 2)
@@ -454,13 +501,17 @@ def build_output(market_data, source, validation=None):
         if country in market_data:
             d = market_data[country]
             markets.append({
-                'country': country,
-                'day':   d.get('day'),
-                'mtd':   d.get('mtd'),
-                'ytd':   d.get('ytd'),
-                'oneYr': d.get('oneYr'),
-                'region': meta['region'],
-                'type':   meta['type'],
+                'country':  country,
+                'day':      d.get('day'),
+                'mtd':      d.get('mtd'),
+                'threeMtd': d.get('threeMtd'),
+                'ytd':      d.get('ytd'),
+                'oneYr':    d.get('oneYr'),
+                'threeYr':  d.get('threeYr'),
+                'fiveYr':   d.get('fiveYr'),
+                'tenYr':    d.get('tenYr'),
+                'region':   meta['region'],
+                'type':     meta['type'],
             })
     out = {
         'lastUpdated': datetime.now(timezone.utc).isoformat(timespec='seconds'),
