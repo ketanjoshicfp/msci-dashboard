@@ -1,0 +1,1670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MSCI World Markets &middot; Performance Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+  :root {
+    --bg-0: #0b0e14;
+    --bg-1: #11151d;
+    --bg-2: #161b25;
+    --bg-3: #1c2230;
+    --line: #232a38;
+    --line-2: #2d3548;
+    --ink-0: #f4f1ea;
+    --ink-1: #c9c4b8;
+    --ink-2: #8a8676;
+    --ink-3: #5a5749;
+    --accent: #c9a96e;
+    --accent-dim: #8e7651;
+    --pos: #4ade80;
+    --pos-deep: #16a34a;
+    --neg: #f87171;
+    --neg-deep: #dc2626;
+    --neutral: #6b7280;
+    --shadow-soft: 0 1px 0 rgba(255,255,255,0.04) inset, 0 8px 24px rgba(0,0,0,0.25);
+    --font-display: 'Fraunces', 'Iowan Old Style', 'Georgia', serif;
+    --font-body: 'Inter', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--bg-0);
+    color: var(--ink-1);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  body {
+    background-image:
+      radial-gradient(ellipse 800px 400px at 10% -10%, rgba(201,169,110,0.06), transparent 60%),
+      radial-gradient(ellipse 600px 300px at 90% 10%, rgba(74,222,128,0.03), transparent 60%);
+  }
+
+  .container {
+    max-width: 1480px;
+    margin: 0 auto;
+    padding: 32px 40px 80px;
+  }
+
+  /* ---------- HEADER ---------- */
+  header.masthead {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    gap: 24px;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 36px;
+  }
+
+  .brand-line {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 14px;
+  }
+  .brand-line .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 12px var(--accent);
+    animation: pulse 2.6s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.85); }
+  }
+
+  h1.title {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(36px, 5vw, 64px);
+    line-height: 0.98;
+    letter-spacing: -0.02em;
+    color: var(--ink-0);
+  }
+  h1.title em {
+    font-style: italic;
+    font-weight: 300;
+    color: var(--accent);
+  }
+
+  .subtitle {
+    margin-top: 14px;
+    color: var(--ink-2);
+    font-size: 14px;
+    max-width: 620px;
+  }
+
+  .header-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 12px;
+  }
+
+  .timestamp-block {
+    text-align: right;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-2);
+    letter-spacing: 0.05em;
+  }
+  .timestamp-block .label {
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-size: 10px;
+    margin-bottom: 4px;
+  }
+  .timestamp-block .value {
+    color: var(--ink-0);
+    font-size: 13px;
+  }
+
+  button.btn {
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--bg-0);
+    background: var(--accent);
+    border: none;
+    padding: 10px 18px;
+    border-radius: 2px;
+    cursor: pointer;
+    letter-spacing: 0.02em;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  button.btn:hover { background: #d9bb80; transform: translateY(-1px); }
+  button.btn:active { transform: translateY(0); }
+  button.btn:disabled { opacity: 0.5; cursor: wait; }
+  button.btn .spinner-icon {
+    width: 12px; height: 12px;
+    border: 1.5px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    display: none;
+  }
+  button.btn.loading .spinner-icon {
+    display: inline-block;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---------- SUMMARY CARDS ---------- */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    margin-bottom: 36px;
+  }
+  .summary-card {
+    background: var(--bg-1);
+    padding: 24px 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .summary-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 2px; height: 100%;
+    background: var(--accent);
+    transform: scaleY(0);
+    transform-origin: top;
+    transition: transform 0.4s ease;
+  }
+  .summary-card:hover::before { transform: scaleY(1); }
+  .summary-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    margin-bottom: 16px;
+  }
+  .summary-value {
+    font-family: var(--font-display);
+    font-size: 38px;
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--ink-0);
+    margin-bottom: 6px;
+  }
+  .summary-value.pos { color: var(--pos); }
+  .summary-value.neg { color: var(--neg); }
+  .summary-meta {
+    font-size: 12px;
+    color: var(--ink-2);
+  }
+  .summary-meta strong {
+    color: var(--ink-1);
+    font-weight: 500;
+  }
+
+  /* ---------- FILTER BAR ---------- */
+  .filter-bar {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr 1fr 1.2fr;
+    gap: 12px;
+    margin-bottom: 28px;
+    padding: 18px;
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+  }
+
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .filter-group label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+  }
+
+  .filter-group input[type="text"],
+  .filter-group select {
+    background: var(--bg-2);
+    border: 1px solid var(--line-2);
+    color: var(--ink-0);
+    padding: 9px 12px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    border-radius: 2px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .filter-group input[type="text"]:focus,
+  .filter-group select:focus { border-color: var(--accent); }
+  .filter-group select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1L5 5L9 1' stroke='%238a8676' stroke-width='1.5' fill='none'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+  }
+
+  .market-toggle {
+    display: flex;
+    background: var(--bg-2);
+    border: 1px solid var(--line-2);
+    border-radius: 2px;
+    padding: 2px;
+    height: 37px;
+  }
+  .market-toggle button {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--ink-2);
+    font-family: var(--font-body);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border-radius: 2px;
+  }
+  .market-toggle button.active {
+    background: var(--accent);
+    color: var(--bg-0);
+    font-weight: 500;
+  }
+
+  .perf-range-display {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--accent);
+    margin-top: 4px;
+  }
+  .range-slider-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 37px;
+  }
+  input[type="range"] {
+    flex: 1;
+    accent-color: var(--accent);
+  }
+
+  /* ---------- SECTION HEADERS ---------- */
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+  }
+  .section-title {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 24px;
+    color: var(--ink-0);
+    letter-spacing: -0.01em;
+  }
+  .section-title em { font-style: italic; color: var(--accent); }
+  .section-meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+  }
+
+  /* ---------- MAP ---------- */
+  .map-section { margin-bottom: 48px; }
+  .map-wrap {
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    position: relative;
+    overflow: hidden;
+  }
+  .map-controls {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    z-index: 5;
+  }
+  .map-controls button {
+    width: 32px; height: 32px;
+    background: var(--bg-2);
+    border: 1px solid var(--line-2);
+    color: var(--ink-1);
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .map-controls button:hover {
+    background: var(--bg-3);
+    color: var(--accent);
+    border-color: var(--accent-dim);
+  }
+
+  #worldMap {
+    width: 100%;
+    height: 560px;
+    display: block;
+    cursor: grab;
+  }
+  #worldMap:active { cursor: grabbing; }
+
+  .country-path {
+    fill: var(--bg-3);
+    stroke: var(--bg-0);
+    stroke-width: 0.5;
+    transition: filter 0.15s, stroke 0.15s;
+  }
+  .country-path.has-data { cursor: pointer; }
+  .country-path:hover {
+    filter: brightness(1.4);
+    stroke: var(--accent);
+    stroke-width: 1.2;
+  }
+
+  .map-legend {
+    position: absolute;
+    left: 20px;
+    bottom: 20px;
+    background: rgba(11, 14, 20, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-2);
+  }
+  .legend-title {
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--ink-3);
+    margin-bottom: 8px;
+    font-size: 9px;
+  }
+  .legend-bar {
+    width: 220px;
+    height: 8px;
+    background: linear-gradient(to right, var(--neg-deep), var(--neg), #404040, var(--pos), var(--pos-deep));
+    margin-bottom: 4px;
+  }
+  .legend-labels {
+    display: flex;
+    justify-content: space-between;
+    color: var(--ink-1);
+  }
+
+  .tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: var(--bg-2);
+    border: 1px solid var(--line-2);
+    padding: 12px 14px;
+    font-family: var(--font-body);
+    font-size: 12px;
+    color: var(--ink-0);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+    opacity: 0;
+    transition: opacity 0.15s;
+    z-index: 100;
+    min-width: 180px;
+  }
+  .tooltip.visible { opacity: 1; }
+  .tooltip-country {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--ink-0);
+    margin-bottom: 2px;
+  }
+  .tooltip-region {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--accent);
+    margin-bottom: 10px;
+  }
+  .tooltip-row {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 3px 0;
+    border-top: 1px solid var(--line);
+  }
+  .tooltip-row:first-of-type { border-top: none; }
+  .tooltip-row .lbl { color: var(--ink-2); }
+  .tooltip-row .val { font-weight: 500; }
+  .tooltip-row .val.pos { color: var(--pos); }
+  .tooltip-row .val.neg { color: var(--neg); }
+
+  /* ---------- CHART GRID ---------- */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr;
+    gap: 24px;
+    margin-bottom: 48px;
+  }
+  .chart-card {
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    padding: 24px;
+  }
+  .chart-card h3 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 18px;
+    color: var(--ink-0);
+    margin-bottom: 4px;
+  }
+  .chart-card .chart-meta {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    margin-bottom: 16px;
+  }
+  .chart-canvas-wrap {
+    position: relative;
+    height: 400px;
+  }
+  .chart-canvas-wrap.tall { height: 460px; }
+
+  .metric-toggle {
+    display: inline-flex;
+    background: var(--bg-2);
+    border: 1px solid var(--line-2);
+    border-radius: 2px;
+    padding: 2px;
+    margin-bottom: 12px;
+  }
+  .metric-toggle button {
+    background: transparent;
+    border: none;
+    color: var(--ink-2);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 6px 12px;
+    cursor: pointer;
+    border-radius: 2px;
+  }
+  .metric-toggle button.active {
+    background: var(--accent);
+    color: var(--bg-0);
+  }
+
+  /* ---------- DATA TABLE ---------- */
+  .table-section { margin-bottom: 40px; }
+  .table-wrap {
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    overflow-x: auto;
+  }
+  table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  table.data-table thead th {
+    background: var(--bg-2);
+    color: var(--ink-2);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    text-align: right;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--line-2);
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    transition: color 0.15s;
+  }
+  table.data-table thead th:first-child,
+  table.data-table thead th:nth-child(2),
+  table.data-table thead th:nth-child(3) { text-align: left; }
+  table.data-table thead th:hover { color: var(--accent); }
+  table.data-table thead th.sorted { color: var(--accent); }
+  table.data-table thead th .sort-arrow {
+    display: inline-block;
+    margin-left: 4px;
+    opacity: 0.5;
+  }
+  table.data-table thead th.sorted .sort-arrow { opacity: 1; }
+
+  table.data-table tbody td {
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--line);
+    text-align: right;
+    font-family: var(--font-mono);
+    color: var(--ink-1);
+    white-space: nowrap;
+  }
+  table.data-table tbody td:first-child,
+  table.data-table tbody td:nth-child(2),
+  table.data-table tbody td:nth-child(3) { text-align: left; }
+  table.data-table tbody td:nth-child(2) {
+    font-family: var(--font-display);
+    font-size: 15px;
+    color: var(--ink-0);
+  }
+  table.data-table tbody tr {
+    transition: background 0.15s;
+  }
+  table.data-table tbody tr:hover { background: var(--bg-2); }
+
+  .rank {
+    color: var(--ink-3);
+    font-size: 11px;
+  }
+
+  .badge {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    padding: 3px 8px;
+    border: 1px solid;
+    border-radius: 2px;
+  }
+  .badge.dev { color: var(--accent); border-color: var(--accent-dim); }
+  .badge.emerg { color: #6ea8fe; border-color: #3a5a99; }
+
+  .pct {
+    display: inline-block;
+    font-variant-numeric: tabular-nums;
+  }
+  .pct.pos { color: var(--pos); }
+  .pct.neg { color: var(--neg); }
+
+  /* ---------- STATES ---------- */
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(11, 14, 20, 0.96);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    transition: opacity 0.4s ease;
+  }
+  .loading-overlay.hidden { opacity: 0; pointer-events: none; }
+  .loading-overlay .logo {
+    font-family: var(--font-display);
+    font-size: 32px;
+    color: var(--ink-0);
+    letter-spacing: -0.02em;
+  }
+  .loading-overlay .logo em { font-style: italic; color: var(--accent); }
+  .loading-bar {
+    width: 280px;
+    height: 2px;
+    background: var(--line);
+    overflow: hidden;
+    position: relative;
+  }
+  .loading-bar::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: var(--accent);
+    animation: load-sweep 1.6s ease-in-out infinite;
+  }
+  @keyframes load-sweep {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+  .loading-status {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+  }
+
+  .error-banner {
+    background: rgba(248, 113, 113, 0.08);
+    border: 1px solid rgba(248, 113, 113, 0.3);
+    color: var(--neg);
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    font-size: 13px;
+    display: none;
+  }
+  .error-banner.visible { display: block; }
+  .error-banner strong { color: #fca5a5; }
+
+  .info-banner {
+    background: rgba(201, 169, 110, 0.06);
+    border-left: 2px solid var(--accent);
+    color: var(--ink-1);
+    padding: 14px 18px;
+    margin-bottom: 28px;
+    font-size: 12px;
+  }
+  .info-banner strong { color: var(--accent); font-weight: 500; }
+
+  .empty-state {
+    padding: 80px 20px;
+    text-align: center;
+    color: var(--ink-3);
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 18px;
+  }
+
+  /* ---------- FOOTER ---------- */
+  footer {
+    margin-top: 64px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* ---------- RESPONSIVE ---------- */
+  @media (max-width: 1100px) {
+    .summary-grid { grid-template-columns: repeat(2, 1fr); }
+    .charts-grid { grid-template-columns: 1fr; }
+    .filter-bar { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 720px) {
+    .container { padding: 20px 16px 40px; }
+    header.masthead { grid-template-columns: 1fr; }
+    .header-controls { align-items: flex-start; }
+    .summary-grid { grid-template-columns: 1fr; }
+    .filter-bar { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="logo">MSCI <em>World</em></div>
+  <div class="loading-bar"></div>
+  <div class="loading-status" id="loadingStatus">Loading market data...</div>
+</div>
+
+<div class="container">
+
+  <!-- HEADER -->
+  <header class="masthead">
+    <div>
+      <div class="brand-line"><span class="dot"></span><span>Live Markets Terminal</span></div>
+      <h1 class="title">MSCI World <em>Markets</em></h1>
+      <p class="subtitle">A cross-section of 44 developed and emerging equity markets, tracked by daily, month-to-date, year-to-date and trailing twelve-month total return in local currency.</p>
+    </div>
+    <div class="header-controls">
+      <div class="timestamp-block">
+        <div class="label">Last Updated</div>
+        <div class="value" id="lastUpdated">&mdash;</div>
+      </div>
+      <button class="btn" id="refreshBtn">
+        <span class="spinner-icon"></span>
+        <span class="btn-label">Refresh Data</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="error-banner" id="errorBanner"></div>
+
+  <div class="info-banner" id="infoBanner">
+    <strong>Data source &mdash;</strong> <span id="dataSourceLabel">Loading…</span>
+  </div>
+
+  <!-- SUMMARY CARDS -->
+  <section class="summary-grid" id="summaryGrid">
+    <div class="summary-card">
+      <div class="summary-label">Markets Tracked</div>
+      <div class="summary-value" id="sumTotal">&mdash;</div>
+      <div class="summary-meta"><strong id="sumDev">&mdash;</strong> developed &middot; <strong id="sumEmerg">&mdash;</strong> emerging</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Average 1Y Return</div>
+      <div class="summary-value" id="sumAvg">&mdash;</div>
+      <div class="summary-meta">Equal-weighted across all markets</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Best Performer (1Y)</div>
+      <div class="summary-value" id="sumBest">&mdash;</div>
+      <div class="summary-meta"><strong id="sumBestName">&mdash;</strong></div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-label">Worst Performer (1Y)</div>
+      <div class="summary-value" id="sumWorst">&mdash;</div>
+      <div class="summary-meta"><strong id="sumWorstName">&mdash;</strong></div>
+    </div>
+  </section>
+
+  <!-- FILTER BAR -->
+  <div class="filter-bar">
+    <div class="filter-group">
+      <label for="searchInput">Search</label>
+      <input type="text" id="searchInput" placeholder="Country name…" autocomplete="off" />
+    </div>
+    <div class="filter-group">
+      <label for="regionSelect">Region</label>
+      <select id="regionSelect">
+        <option value="all">All regions</option>
+        <option value="Americas">Americas</option>
+        <option value="EMEA">EMEA</option>
+        <option value="Asia-Pacific">Asia-Pacific</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Market Type</label>
+      <div class="market-toggle" id="marketToggle">
+        <button class="active" data-type="all">All</button>
+        <button data-type="Developed">Developed</button>
+        <button data-type="Emerging">Emerging</button>
+      </div>
+    </div>
+    <div class="filter-group">
+      <label>Min 1Y Return: <span class="perf-range-display" id="perfRangeLabel">≥ -100%</span></label>
+      <div class="range-slider-wrap">
+        <input type="range" id="perfRange" min="-100" max="100" value="-100" step="1" />
+      </div>
+    </div>
+  </div>
+
+  <!-- WORLD MAP -->
+  <section class="map-section">
+    <div class="section-header">
+      <h2 class="section-title">Geographic <em>Heat Map</em></h2>
+      <div class="section-meta" id="mapMetricLabel">Coloured by 1Y return</div>
+    </div>
+    <div class="metric-toggle" id="mapMetricToggle">
+      <button data-metric="day">1D</button>
+      <button data-metric="mtd">MTD</button>
+      <button data-metric="ytd">YTD</button>
+      <button class="active" data-metric="oneYr">1Y</button>
+    </div>
+    <div class="map-wrap">
+      <div class="map-controls">
+        <button id="zoomIn" title="Zoom in">+</button>
+        <button id="zoomOut" title="Zoom out">&minus;</button>
+        <button id="zoomReset" title="Reset">⟲</button>
+      </div>
+      <svg id="worldMap"></svg>
+      <div class="map-legend">
+        <div class="legend-title">Return scale</div>
+        <div class="legend-bar"></div>
+        <div class="legend-labels" id="legendLabels">
+          <span>-50%</span><span>0</span><span>+50%</span>
+        </div>
+      </div>
+      <div class="tooltip" id="mapTooltip"></div>
+    </div>
+  </section>
+
+  <!-- CHARTS GRID -->
+  <section class="charts-grid">
+    <div class="chart-card">
+      <h3>Performance Ranking</h3>
+      <div class="chart-meta">All markets · sorted</div>
+      <div class="metric-toggle" id="barMetricToggle">
+        <button data-metric="day">1D</button>
+        <button data-metric="mtd">MTD</button>
+        <button data-metric="ytd">YTD</button>
+        <button class="active" data-metric="oneYr">1Y</button>
+      </div>
+      <div class="chart-canvas-wrap tall">
+        <canvas id="barChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card">
+      <h3>Return Distribution</h3>
+      <div class="chart-meta">Histogram · 1Y returns</div>
+      <div class="metric-toggle" id="histMetricToggle">
+        <button data-metric="day">1D</button>
+        <button data-metric="mtd">MTD</button>
+        <button data-metric="ytd">YTD</button>
+        <button class="active" data-metric="oneYr">1Y</button>
+      </div>
+      <div class="chart-canvas-wrap">
+        <canvas id="histChart"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- DATA TABLE -->
+  <section class="table-section">
+    <div class="section-header">
+      <h2 class="section-title">Markets <em>Table</em></h2>
+      <div class="section-meta" id="tableCount">Showing — of — markets</div>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table" id="dataTable">
+        <thead>
+          <tr>
+            <th data-key="rank" style="width:60px">#</th>
+            <th data-key="country">Country</th>
+            <th data-key="region">Region</th>
+            <th data-key="type" style="width:100px">Type</th>
+            <th data-key="day" class="num">1D %</th>
+            <th data-key="mtd" class="num">MTD %</th>
+            <th data-key="ytd" class="num">YTD %</th>
+            <th data-key="oneYr" class="num sorted">1Y %<span class="sort-arrow">↓</span></th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <div>MSCI World Markets · Performance Terminal</div>
+    <div id="footerMeta">—</div>
+  </footer>
+</div>
+
+<script>
+/* =========================================================================
+   MSCI WORLD MARKETS · PERFORMANCE DASHBOARD
+   ========================================================================= */
+
+// ---------- COUNTRY METADATA ----------
+// MSCI Developed (23) + Emerging (21) markets with ISO numeric codes
+// (matches world-atlas TopoJSON country IDs)
+const COUNTRY_META = {
+  // Developed Markets
+  'USA':           { iso: '840', region: 'Americas',     type: 'Developed' },
+  'Canada':        { iso: '124', region: 'Americas',     type: 'Developed' },
+  'Australia':     { iso: '036', region: 'Asia-Pacific', type: 'Developed' },
+  'Hong Kong':     { iso: '344', region: 'Asia-Pacific', type: 'Developed' },
+  'Japan':         { iso: '392', region: 'Asia-Pacific', type: 'Developed' },
+  'New Zealand':   { iso: '554', region: 'Asia-Pacific', type: 'Developed' },
+  'Singapore':     { iso: '702', region: 'Asia-Pacific', type: 'Developed' },
+  'Israel':        { iso: '376', region: 'EMEA',         type: 'Developed' },
+  'Austria':       { iso: '040', region: 'EMEA',         type: 'Developed' },
+  'Belgium':       { iso: '056', region: 'EMEA',         type: 'Developed' },
+  'Denmark':       { iso: '208', region: 'EMEA',         type: 'Developed' },
+  'Finland':       { iso: '246', region: 'EMEA',         type: 'Developed' },
+  'France':        { iso: '250', region: 'EMEA',         type: 'Developed' },
+  'Germany':       { iso: '276', region: 'EMEA',         type: 'Developed' },
+  'Ireland':       { iso: '372', region: 'EMEA',         type: 'Developed' },
+  'Italy':         { iso: '380', region: 'EMEA',         type: 'Developed' },
+  'Netherlands':   { iso: '528', region: 'EMEA',         type: 'Developed' },
+  'Norway':        { iso: '578', region: 'EMEA',         type: 'Developed' },
+  'Portugal':      { iso: '620', region: 'EMEA',         type: 'Developed' },
+  'Spain':         { iso: '724', region: 'EMEA',         type: 'Developed' },
+  'Sweden':        { iso: '752', region: 'EMEA',         type: 'Developed' },
+  'Switzerland':   { iso: '756', region: 'EMEA',         type: 'Developed' },
+  'United Kingdom':{ iso: '826', region: 'EMEA',         type: 'Developed' },
+
+  // Emerging Markets
+  'Brazil':        { iso: '076', region: 'Americas',     type: 'Emerging' },
+  'Chile':         { iso: '152', region: 'Americas',     type: 'Emerging' },
+  'Colombia':      { iso: '170', region: 'Americas',     type: 'Emerging' },
+  'Peru':          { iso: '604', region: 'Americas',     type: 'Emerging' },
+  'Mexico':        { iso: '484', region: 'Americas',     type: 'Emerging' },
+  'China':         { iso: '156', region: 'Asia-Pacific', type: 'Emerging' },
+  'India':         { iso: '356', region: 'Asia-Pacific', type: 'Emerging' },
+  'Indonesia':     { iso: '360', region: 'Asia-Pacific', type: 'Emerging' },
+  'Korea':         { iso: '410', region: 'Asia-Pacific', type: 'Emerging' },
+  'Malaysia':      { iso: '458', region: 'Asia-Pacific', type: 'Emerging' },
+  'Philippines':   { iso: '608', region: 'Asia-Pacific', type: 'Emerging' },
+  'Taiwan':        { iso: '158', region: 'Asia-Pacific', type: 'Emerging' },
+  'Thailand':      { iso: '764', region: 'Asia-Pacific', type: 'Emerging' },
+  'South Africa':  { iso: '710', region: 'EMEA',         type: 'Emerging' },
+  'Egypt':         { iso: '818', region: 'EMEA',         type: 'Emerging' },
+  'Saudi Arabia':  { iso: '682', region: 'EMEA',         type: 'Emerging' },
+  'UAE':           { iso: '784', region: 'EMEA',         type: 'Emerging' },
+  'Qatar':         { iso: '634', region: 'EMEA',         type: 'Emerging' },
+  'Turkey':        { iso: '792', region: 'EMEA',         type: 'Emerging' },
+  'Poland':        { iso: '616', region: 'EMEA',         type: 'Emerging' },
+  'Greece':        { iso: '300', region: 'EMEA',         type: 'Emerging' }
+};
+
+// =========================================================================
+// CONFIG — EDIT THESE TWO LINES AFTER YOU CREATE YOUR GITHUB REPO
+// =========================================================================
+const CONFIG = {
+  githubUser: 'YOUR_GITHUB_USERNAME',   // <— change me
+  githubRepo: 'msci-dashboard',          // <— change me if different
+  branch:     'main',
+  dataPath:   'data/msci-data.json'
+};
+// Data URL (auto-built):
+const DATA_URL = `https://raw.githubusercontent.com/${CONFIG.githubUser}/${CONFIG.githubRepo}/${CONFIG.branch}/${CONFIG.dataPath}`;
+
+// ---------- STATE ----------
+const CACHE_KEY = 'msci_dashboard_cache_v2';
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
+
+const state = {
+  data: [],
+  filtered: [],
+  filters: {
+    search: '',
+    region: 'all',
+    type: 'all',
+    minPerf: -100
+  },
+  sort: { key: 'oneYr', dir: 'desc' },
+  mapMetric: 'oneYr',
+  barMetric: 'oneYr',
+  histMetric: 'oneYr',
+  zoom: null,
+  svg: null,
+  g: null,
+  projection: null,
+  path: null,
+  topo: null,
+  barChart: null,
+  histChart: null
+};
+
+// ---------- DATA FETCH ----------
+/**
+ * Fetches MSCI market data from the JSON file committed daily by the GitHub
+ * Action in this repo. Add `?t=<timestamp>` to bust both the localStorage
+ * cache and any CDN cache when the user clicks Refresh.
+ */
+async function fetchMarketData() {
+  const url = `${DATA_URL}?t=${Date.now()}`;
+  const resp = await fetch(url, { cache: 'no-store' });
+  if (!resp.ok) {
+    throw new Error(`HTTP ${resp.status} fetching ${url}`);
+  }
+  const payload = await resp.json();
+
+  if (!payload.markets || !Array.isArray(payload.markets)) {
+    throw new Error('Malformed data: missing markets array');
+  }
+
+  // Enrich each row with region/type (in case the JSON is sparse) and return.
+  return {
+    markets: payload.markets.map(d => ({
+      country: d.country,
+      day:     d.day,
+      mtd:     d.mtd,
+      ytd:     d.ytd,
+      oneYr:   d.oneYr,
+      region:  d.region || (COUNTRY_META[d.country] && COUNTRY_META[d.country].region) || 'Other',
+      type:    d.type   || (COUNTRY_META[d.country] && COUNTRY_META[d.country].type)   || 'Developed'
+    })),
+    meta: {
+      lastUpdated: payload.lastUpdated,
+      source:      payload.source,
+      asOf:        payload.asOf,
+      marketsCount: payload.marketsCount,
+      expectedCount: payload.expectedCount
+    }
+  };
+}
+
+// ---------- CACHE ----------
+function loadCache() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (Date.now() - obj.ts > CACHE_TTL_MS) return null;
+    return obj;
+  } catch (e) { return null; }
+}
+
+function saveCache(data) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+      ts: Date.now(),
+      data
+    }));
+  } catch (e) { console.warn('Cache save failed:', e); }
+}
+
+// ---------- HELPERS ----------
+function fmtPct(v) {
+  if (v === null || v === undefined || Number.isNaN(v)) return '—';
+  const sign = v > 0 ? '+' : '';
+  return sign + v.toFixed(2) + '%';
+}
+
+function pctClass(v) {
+  if (v === null || v === undefined) return '';
+  return v >= 0 ? 'pos' : 'neg';
+}
+
+function fmtTimestamp(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  return d.toLocaleString('en-GB', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+}
+
+// Diverging colour scale: -50 → 0 → +50 maps to red → grey → green
+function returnColor(v) {
+  if (v === null || v === undefined || Number.isNaN(v)) return '#1c2230';
+  const clamped = Math.max(-50, Math.min(50, v));
+  const t = (clamped + 50) / 100; // 0..1
+  // Smooth interpolation through three stops
+  if (t < 0.5) {
+    const u = t * 2; // 0..1 from red to neutral
+    return d3.interpolateRgb('#7f1d1d', '#404040')(u);
+  } else {
+    const u = (t - 0.5) * 2; // 0..1 from neutral to green
+    return d3.interpolateRgb('#404040', '#15803d')(u);
+  }
+}
+
+// ---------- SUMMARY ----------
+function renderSummary() {
+  const data = state.data;
+  if (!data.length) return;
+
+  document.getElementById('sumTotal').textContent = data.length;
+  document.getElementById('sumDev').textContent = data.filter(d => d.type === 'Developed').length;
+  document.getElementById('sumEmerg').textContent = data.filter(d => d.type === 'Emerging').length;
+
+  const avg = data.reduce((s, d) => s + d.oneYr, 0) / data.length;
+  const avgEl = document.getElementById('sumAvg');
+  avgEl.textContent = fmtPct(avg);
+  avgEl.className = 'summary-value ' + pctClass(avg);
+
+  const sorted = [...data].sort((a, b) => b.oneYr - a.oneYr);
+  const best = sorted[0];
+  const worst = sorted[sorted.length - 1];
+
+  const bestEl = document.getElementById('sumBest');
+  bestEl.textContent = fmtPct(best.oneYr);
+  bestEl.className = 'summary-value ' + pctClass(best.oneYr);
+  document.getElementById('sumBestName').textContent = best.country;
+
+  const worstEl = document.getElementById('sumWorst');
+  worstEl.textContent = fmtPct(worst.oneYr);
+  worstEl.className = 'summary-value ' + pctClass(worst.oneYr);
+  document.getElementById('sumWorstName').textContent = worst.country;
+}
+
+// ---------- FILTER ----------
+function applyFilters() {
+  const { search, region, type, minPerf } = state.filters;
+  const q = search.trim().toLowerCase();
+
+  state.filtered = state.data.filter(d => {
+    if (q && !d.country.toLowerCase().includes(q)) return false;
+    if (region !== 'all' && d.region !== region) return false;
+    if (type !== 'all' && d.type !== type) return false;
+    if (d.oneYr < minPerf) return false;
+    return true;
+  });
+
+  renderTable();
+  renderBarChart();
+  renderHistogram();
+  updateMapColors();
+}
+
+// ---------- TABLE ----------
+function renderTable() {
+  const { key, dir } = state.sort;
+  const sorted = [...state.filtered].sort((a, b) => {
+    let av = a[key], bv = b[key];
+    if (typeof av === 'string') { av = av.toLowerCase(); bv = bv.toLowerCase(); }
+    if (av < bv) return dir === 'asc' ? -1 : 1;
+    if (av > bv) return dir === 'asc' ? 1 : -1;
+    return 0;
+  });
+
+  const tbody = document.getElementById('tableBody');
+  if (!sorted.length) {
+    tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state">No markets match your filters.</div></td></tr>';
+  } else {
+    tbody.innerHTML = sorted.map((d, i) => `
+      <tr data-country="${d.country}">
+        <td><span class="rank">${String(i + 1).padStart(2, '0')}</span></td>
+        <td>${d.country}</td>
+        <td>${d.region}</td>
+        <td><span class="badge ${d.type === 'Developed' ? 'dev' : 'emerg'}">${d.type}</span></td>
+        <td><span class="pct ${pctClass(d.day)}">${fmtPct(d.day)}</span></td>
+        <td><span class="pct ${pctClass(d.mtd)}">${fmtPct(d.mtd)}</span></td>
+        <td><span class="pct ${pctClass(d.ytd)}">${fmtPct(d.ytd)}</span></td>
+        <td><span class="pct ${pctClass(d.oneYr)}">${fmtPct(d.oneYr)}</span></td>
+      </tr>
+    `).join('');
+  }
+
+  document.getElementById('tableCount').textContent =
+    `Showing ${state.filtered.length} of ${state.data.length} markets`;
+
+  // sort indicator
+  document.querySelectorAll('#dataTable thead th').forEach(th => {
+    th.classList.remove('sorted');
+    const arrow = th.querySelector('.sort-arrow');
+    if (arrow) arrow.remove();
+    if (th.dataset.key === key) {
+      th.classList.add('sorted');
+      const a = document.createElement('span');
+      a.className = 'sort-arrow';
+      a.textContent = dir === 'asc' ? '↑' : '↓';
+      th.appendChild(a);
+    }
+  });
+}
+
+// ---------- BAR CHART ----------
+function renderBarChart() {
+  const metric = state.barMetric;
+  const sorted = [...state.filtered].sort((a, b) => b[metric] - a[metric]);
+  const labels = sorted.map(d => d.country);
+  const values = sorted.map(d => d[metric]);
+  const colors = values.map(v => v >= 0 ? '#4ade80' : '#f87171');
+
+  if (state.barChart) state.barChart.destroy();
+  const ctx = document.getElementById('barChart').getContext('2d');
+
+  state.barChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: colors,
+        borderColor: colors,
+        borderWidth: 0,
+        barThickness: 7
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 600 },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#11151d',
+          titleColor: '#f4f1ea',
+          bodyColor: '#c9c4b8',
+          borderColor: '#2d3548',
+          borderWidth: 1,
+          padding: 10,
+          titleFont: { family: 'Inter', size: 13 },
+          bodyFont: { family: 'JetBrains Mono', size: 11 },
+          callbacks: {
+            label: ctx => `${metric.toUpperCase()}: ${fmtPct(ctx.parsed.x)}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(45,53,72,0.4)', drawTicks: false },
+          ticks: {
+            color: '#8a8676',
+            font: { family: 'JetBrains Mono', size: 10 },
+            callback: v => v + '%'
+          },
+          border: { color: '#2d3548' }
+        },
+        y: {
+          grid: { display: false },
+          ticks: {
+            color: '#c9c4b8',
+            font: { family: 'Inter', size: 11 }
+          },
+          border: { color: '#2d3548' }
+        }
+      }
+    }
+  });
+}
+
+// ---------- HISTOGRAM ----------
+function renderHistogram() {
+  const metric = state.histMetric;
+  const values = state.filtered.map(d => d[metric]);
+
+  if (!values.length) {
+    if (state.histChart) state.histChart.destroy();
+    return;
+  }
+
+  // Adaptive bins based on metric
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const binCount = 10;
+  const binWidth = (max - min) / binCount || 1;
+
+  const bins = Array.from({ length: binCount }, (_, i) => {
+    const lo = min + i * binWidth;
+    const hi = lo + binWidth;
+    return { lo, hi, count: 0, mid: (lo + hi) / 2 };
+  });
+
+  values.forEach(v => {
+    let idx = Math.floor((v - min) / binWidth);
+    if (idx === binCount) idx = binCount - 1;
+    bins[idx].count++;
+  });
+
+  const labels = bins.map(b => `${b.lo.toFixed(1)} to ${b.hi.toFixed(1)}`);
+  const data = bins.map(b => b.count);
+  const colors = bins.map(b => returnColor(b.mid));
+
+  if (state.histChart) state.histChart.destroy();
+  const ctx = document.getElementById('histChart').getContext('2d');
+
+  state.histChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor: colors,
+        borderColor: colors,
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 600 },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#11151d',
+          titleColor: '#f4f1ea',
+          bodyColor: '#c9c4b8',
+          borderColor: '#2d3548',
+          borderWidth: 1,
+          padding: 10,
+          callbacks: {
+            title: ctx => `Range ${ctx[0].label}%`,
+            label: ctx => `${ctx.parsed.y} ${ctx.parsed.y === 1 ? 'market' : 'markets'}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: {
+            color: '#8a8676',
+            font: { family: 'JetBrains Mono', size: 9 },
+            maxRotation: 45,
+            minRotation: 45
+          },
+          border: { color: '#2d3548' }
+        },
+        y: {
+          grid: { color: 'rgba(45,53,72,0.4)' },
+          ticks: {
+            color: '#8a8676',
+            font: { family: 'JetBrains Mono', size: 10 },
+            stepSize: 1,
+            precision: 0
+          },
+          border: { color: '#2d3548' }
+        }
+      }
+    }
+  });
+}
+
+// ---------- MAP ----------
+async function initMap() {
+  const svg = d3.select('#worldMap');
+  state.svg = svg;
+  const bbox = svg.node().getBoundingClientRect();
+  const width = bbox.width;
+  const height = bbox.height;
+
+  svg.attr('viewBox', `0 0 ${width} ${height}`);
+
+  state.projection = d3.geoNaturalEarth1()
+    .scale(width / 6.3)
+    .translate([width / 2, height / 1.85]);
+
+  state.path = d3.geoPath().projection(state.projection);
+
+  // Sphere background
+  svg.append('path')
+    .attr('d', state.path({ type: 'Sphere' }))
+    .attr('fill', '#0b0e14')
+    .attr('stroke', 'none');
+
+  const g = svg.append('g');
+  state.g = g;
+
+  try {
+    const topo = await d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json');
+    state.topo = topo;
+    const countries = topojson.feature(topo, topo.objects.countries);
+
+    g.selectAll('path.country-path')
+      .data(countries.features)
+      .join('path')
+      .attr('class', 'country-path')
+      .attr('d', state.path)
+      .attr('data-id', d => String(d.id).padStart(3, '0'))
+      .on('mousemove', handleMapHover)
+      .on('mouseleave', () => {
+        document.getElementById('mapTooltip').classList.remove('visible');
+      });
+
+    updateMapColors();
+
+    // Zoom behaviour
+    state.zoom = d3.zoom()
+      .scaleExtent([1, 8])
+      .on('zoom', (e) => {
+        g.attr('transform', e.transform);
+      });
+    svg.call(state.zoom);
+
+  } catch (e) {
+    console.error('Map load failed:', e);
+    showError('Could not load world map data. Check your internet connection.');
+  }
+}
+
+function updateMapColors() {
+  if (!state.g) return;
+  const metric = state.mapMetric;
+  const dataByIso = {};
+  state.filtered.forEach(d => {
+    const meta = COUNTRY_META[d.country];
+    if (meta) dataByIso[meta.iso] = d;
+  });
+
+  state.g.selectAll('path.country-path')
+    .each(function(d) {
+      const id = String(d.id).padStart(3, '0');
+      const record = dataByIso[id];
+      const sel = d3.select(this);
+      if (record) {
+        sel.classed('has-data', true)
+           .transition().duration(400)
+           .attr('fill', returnColor(record[metric]));
+      } else {
+        sel.classed('has-data', false)
+           .transition().duration(400)
+           .attr('fill', '#1c2230');
+      }
+    });
+
+  document.getElementById('mapMetricLabel').textContent =
+    'Coloured by ' + ({ day: '1D', mtd: 'MTD', ytd: 'YTD', oneYr: '1Y' })[metric] + ' return';
+}
+
+function handleMapHover(event, d) {
+  const id = String(d.id).padStart(3, '0');
+  const record = state.filtered.find(r => COUNTRY_META[r.country]?.iso === id);
+  const tooltip = document.getElementById('mapTooltip');
+  if (!record) {
+    tooltip.classList.remove('visible');
+    return;
+  }
+
+  tooltip.innerHTML = `
+    <div class="tooltip-country">${record.country}</div>
+    <div class="tooltip-region">${record.region} · ${record.type}</div>
+    <div class="tooltip-row"><span class="lbl">1D</span><span class="val ${pctClass(record.day)}">${fmtPct(record.day)}</span></div>
+    <div class="tooltip-row"><span class="lbl">MTD</span><span class="val ${pctClass(record.mtd)}">${fmtPct(record.mtd)}</span></div>
+    <div class="tooltip-row"><span class="lbl">YTD</span><span class="val ${pctClass(record.ytd)}">${fmtPct(record.ytd)}</span></div>
+    <div class="tooltip-row"><span class="lbl">1Y</span><span class="val ${pctClass(record.oneYr)}">${fmtPct(record.oneYr)}</span></div>
+  `;
+
+  const wrap = document.querySelector('.map-wrap');
+  const wrapRect = wrap.getBoundingClientRect();
+  let x = event.clientX - wrapRect.left + 14;
+  let y = event.clientY - wrapRect.top + 14;
+  const ttWidth = 200, ttHeight = 160;
+  if (x + ttWidth > wrapRect.width) x = event.clientX - wrapRect.left - ttWidth - 14;
+  if (y + ttHeight > wrapRect.height) y = event.clientY - wrapRect.top - ttHeight - 14;
+  tooltip.style.left = x + 'px';
+  tooltip.style.top = y + 'px';
+  tooltip.classList.add('visible');
+}
+
+// ---------- ERROR / LOADING ----------
+function showError(msg) {
+  const banner = document.getElementById('errorBanner');
+  banner.innerHTML = `<strong>Data error.</strong> ${msg}`;
+  banner.classList.add('visible');
+  setTimeout(() => banner.classList.remove('visible'), 8000);
+}
+
+function setLoadingStatus(text) {
+  document.getElementById('loadingStatus').textContent = text;
+}
+
+function hideLoader() {
+  document.getElementById('loadingOverlay').classList.add('hidden');
+}
+
+// ---------- MAIN ----------
+async function loadAndRender({ force = false } = {}) {
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('loading');
+  btn.disabled = true;
+
+  try {
+    let payload, ts;
+    const cache = force ? null : loadCache();
+    if (cache) {
+      payload = cache.data;
+      ts = cache.ts;
+      setLoadingStatus('Loading from cache...');
+    } else {
+      setLoadingStatus('Fetching MSCI data from GitHub...');
+      payload = await fetchMarketData();
+      ts = Date.now();
+      saveCache(payload);
+    }
+
+    state.data = payload.markets;
+    const meta = payload.meta || {};
+
+    // Headline timestamp = data's actual as-of date, not fetch time
+    const asOfTs = meta.lastUpdated ? new Date(meta.lastUpdated).getTime() : ts;
+    document.getElementById('lastUpdated').textContent = fmtTimestamp(asOfTs);
+
+    // Footer + data-source banner
+    document.getElementById('footerMeta').textContent =
+      `Source: ${meta.source || '—'} · ${state.data.length} markets · Refreshed ${fmtTimestamp(ts)}`;
+    renderDataSourceBanner(meta);
+
+    if (state.data.length === 0) {
+      showError('No market data yet. The GitHub Action may still be running — try Refresh in a few minutes, or check the Actions tab in your repo.');
+    }
+
+    renderSummary();
+    applyFilters();
+
+    setTimeout(hideLoader, 300);
+
+  } catch (e) {
+    console.error(e);
+    showError(
+      `Could not fetch market data. ${e.message}<br>` +
+      `Check that CONFIG.githubUser/githubRepo are set correctly and the repo is public.`
+    );
+    hideLoader();
+  } finally {
+    btn.classList.remove('loading');
+    btn.disabled = false;
+  }
+}
+
+function renderDataSourceBanner(meta) {
+  const label = document.getElementById('dataSourceLabel');
+  if (!label) return;
+  const source = meta.source || 'UNKNOWN';
+  const asOf = meta.asOf ? new Date(meta.asOf).toLocaleDateString('en-GB',
+    { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+  const sourceText = {
+    'MSCI':        `Live MSCI end-of-day data, scraped by the daily GitHub Action (as of ${asOf})`,
+    'ETF_PROXY':   `Country-ETF proxy data (MSCI scrape unavailable today; values tracked via iShares country ETFs, as of ${asOf})`,
+    'PLACEHOLDER': `Placeholder data — your GitHub Action hasn't run yet. Trigger it manually from the Actions tab of your repo.`,
+    'FAILED':      `Last scrape failed — showing nothing. Check the Actions tab for the error log.`,
+  }[source] || `Source: ${source} (as of ${asOf})`;
+  label.innerHTML = sourceText;
+}
+
+// ---------- EVENT WIRING ----------
+function wireEvents() {
+  // Refresh button
+  document.getElementById('refreshBtn').addEventListener('click', () => {
+    loadAndRender({ force: true });
+  });
+
+  // Search
+  document.getElementById('searchInput').addEventListener('input', e => {
+    state.filters.search = e.target.value;
+    applyFilters();
+  });
+
+  // Region
+  document.getElementById('regionSelect').addEventListener('change', e => {
+    state.filters.region = e.target.value;
+    applyFilters();
+  });
+
+  // Market type toggle
+  document.querySelectorAll('#marketToggle button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#marketToggle button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.filters.type = btn.dataset.type;
+      applyFilters();
+    });
+  });
+
+  // Performance range
+  const perfRange = document.getElementById('perfRange');
+  const perfLabel = document.getElementById('perfRangeLabel');
+  perfRange.addEventListener('input', e => {
+    state.filters.minPerf = +e.target.value;
+    perfLabel.textContent = `≥ ${e.target.value}%`;
+    applyFilters();
+  });
+
+  // Table sort
+  document.querySelectorAll('#dataTable thead th').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.dataset.key;
+      if (key === 'rank') return;
+      if (state.sort.key === key) {
+        state.sort.dir = state.sort.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        state.sort.key = key;
+        state.sort.dir = ['country', 'region', 'type'].includes(key) ? 'asc' : 'desc';
+      }
+      renderTable();
+    });
+  });
+
+  // Map metric toggle
+  document.querySelectorAll('#mapMetricToggle button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#mapMetricToggle button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.mapMetric = btn.dataset.metric;
+      updateMapColors();
+    });
+  });
+
+  // Bar chart metric toggle
+  document.querySelectorAll('#barMetricToggle button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#barMetricToggle button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.barMetric = btn.dataset.metric;
+      renderBarChart();
+    });
+  });
+
+  // Histogram metric toggle
+  document.querySelectorAll('#histMetricToggle button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#histMetricToggle button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.histMetric = btn.dataset.metric;
+      renderHistogram();
+    });
+  });
+
+  // Zoom controls
+  document.getElementById('zoomIn').addEventListener('click', () => {
+    state.svg.transition().duration(400).call(state.zoom.scaleBy, 1.5);
+  });
+  document.getElementById('zoomOut').addEventListener('click', () => {
+    state.svg.transition().duration(400).call(state.zoom.scaleBy, 0.66);
+  });
+  document.getElementById('zoomReset').addEventListener('click', () => {
+    state.svg.transition().duration(500).call(state.zoom.transform, d3.zoomIdentity);
+  });
+
+  // Window resize
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (state.barChart) state.barChart.resize();
+      if (state.histChart) state.histChart.resize();
+    }, 200);
+  });
+}
+
+// ---------- BOOT ----------
+(async function init() {
+  wireEvents();
+  setLoadingStatus('Initialising map...');
+  await initMap();
+  setLoadingStatus('Loading market data...');
+  await loadAndRender();
+})();
+</script>
+</body>
+</html>
