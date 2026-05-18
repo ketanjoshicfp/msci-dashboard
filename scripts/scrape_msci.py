@@ -1,19 +1,19 @@
 """
-MSCI World Markets Scraper (v2)
+MSCI World Markets Scraper (v3)
 ================================
 
 Strategy:
-  1. PRIMARY: Use Playwright to load MSCI's end-of-day data page,
-     intercept the XHR responses + scrape the rendered DOM table.
-  2. FALLBACK: If MSCI returns nothing usable, fetch country-ETF prices
-     from Yahoo Finance via the `yfinance` package and compute returns.
-
-Why yfinance and not Stooq:
-  Stooq blocks GitHub Actions IP ranges. Yahoo Finance does not.
-  yfinance is the de-facto standard library for free EOD data and
-  works reliably from cloud runners.
+  1. PRIMARY: Playwright scrape of MSCI's end-of-day data search page
+     (logs every data row found, parses country indices from the table).
+  2. SECONDARY: yfinance with curl_cffi browser-TLS-impersonation session.
+     Yahoo Finance blocks ordinary Python clients but accepts requests
+     that look like Chrome — curl_cffi handles the impersonation.
+  3. VALIDATOR: When BOTH sources succeed, compare overlapping countries
+     and report any 1Y / YTD / MTD / 1D returns differing by > 2%.
 
 Output: data/msci-data.json
+  - source: "MSCI" (preferred) | "ETF_PROXY" | "FAILED"
+  - validation: { compared: N, discrepancies: [{country, metric, msci, etf, diff}, ...] }
 """
 
 import asyncio
@@ -27,9 +27,6 @@ from pathlib import Path
 # =========================================================================
 # COUNTRY METADATA
 # =========================================================================
-# etf: iShares MSCI country ETF ticker on Yahoo Finance. These ETFs are
-# explicitly designed to track the corresponding MSCI country index
-# (correlation 0.98+).
 MARKETS = {
     # ---- DEVELOPED (23) ----
     'USA':           {'etf': 'EUSA', 'region': 'Americas',     'type': 'Developed'},
@@ -82,13 +79,12 @@ MARKETS = {
 
 
 # =========================================================================
-# PRIMARY: Playwright scrape of MSCI's end-of-day data search page
+# PRIMARY: Playwright scrape of MSCI's data search page
 # =========================================================================
 async def scrape_msci_playwright():
     from playwright.async_api import async_playwright
 
     print("[MSCI] Launching headless Chromium...")
-    captured_responses = []
     captured_json = []
 
     async with async_playwright() as p:
@@ -98,6 +94,7 @@ async def scrape_msci_playwright():
                        '(KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
             locale='en-GB',
             timezone_id='Europe/London',
+            viewport={'width': 1600, 'height': 900},
         )
         page = await context.new_page()
 
@@ -109,49 +106,59 @@ async def scrape_msci_playwright():
                     body = await response.text()
                     captured_json.append({'url': url, 'body': body})
                     print(f"[MSCI] JSON {response.status} {url[:120]} ({len(body)}b)")
-                elif any(k in url.lower() for k in ['indexperf', 'index-data', 'performance', 'webapp']):
-                    body = await response.text()
-                    if body and len(body) > 50:
-                        captured_responses.append({'url': url, 'body': body[:200000]})
             except Exception:
                 pass
 
         page.on('response', handle_response)
 
+        # Visit the main page
         try:
             print("[MSCI] Navigating to index-data-search...")
             await page.goto('https://app2.msci.com/products/index-data-search/',
                             wait_until='networkidle', timeout=60000)
-            await page.wait_for_timeout(8000)
+            await page.wait_for_timeout(5000)
         except Exception as e:
             print(f"[MSCI] navigation timeout: {e}", file=sys.stderr)
 
-        # Try to interact with the country tab + search
-        for selector in ['text=Country', 'a:has-text("Country")', 'button:has-text("Search")',
-                         'input[type=submit][value*="Search" i]', 'button:has-text("Update")']:
+        # Click "Country" tab if present, wait for re-render
+        for selector in ['a:has-text("Country")', 'li:has-text("Country") a', 'text=Country']:
             try:
                 elem = page.locator(selector).first
                 if await elem.count() > 0:
                     await elem.click(timeout=3000)
-                    await page.wait_for_timeout(3000)
+                    await page.wait_for_timeout(4000)
+                    print(f"[MSCI] clicked Country tab via: {selector}")
+                    break
+            except Exception:
+                pass
+
+        # Click Search/Update if available to force data population
+        for selector in ['button:has-text("Search")', 'button:has-text("Update")',
+                         'input[type=submit][value*="Search" i]',
+                         'input[type=submit][value*="Update" i]']:
+            try:
+                elem = page.locator(selector).first
+                if await elem.count() > 0:
+                    await elem.click(timeout=3000)
+                    await page.wait_for_timeout(5000)
                     print(f"[MSCI] clicked: {selector}")
             except Exception:
                 pass
 
-        # Also try the legacy regional page
+        # Also try the legacy regional page (might include countries)
         try:
             await page.goto('https://app2.msci.com/webapp/indexperf/pages/IEIPerformanceRegional.jsf',
                             wait_until='networkidle', timeout=45000)
-            await page.wait_for_timeout(8000)
+            await page.wait_for_timeout(6000)
         except Exception:
             pass
 
-        # Extract all DOM tables with their full row structure for debugging
+        # Extract ALL DOM tables with full row structure
         dom_tables = await page.evaluate('''() => {
             const out = [];
             document.querySelectorAll('table').forEach((table, ti) => {
                 const rows = [];
-                table.querySelectorAll('tr').forEach((tr, ri) => {
+                table.querySelectorAll('tr').forEach((tr) => {
                     const cells = Array.from(tr.querySelectorAll('th,td')).map(c => c.innerText.trim());
                     if (cells.length > 0) rows.push(cells);
                 });
@@ -162,66 +169,88 @@ async def scrape_msci_playwright():
 
         await browser.close()
 
-    # ---- Debug logging: show what we actually got ----
-    print(f"\n[MSCI] === DEBUG: DOM TABLE STRUCTURE ===")
-    print(f"[MSCI] Found {len(dom_tables)} tables")
+    # ---- Verbose debug logging ----
+    print(f"\n[MSCI] === DOM TABLES ({len(dom_tables)}) ===")
     for i, t in enumerate(dom_tables):
         print(f"[MSCI] Table {i}: {len(t['rows'])} rows")
-        for j, row in enumerate(t['rows'][:3]):
-            row_str = ' | '.join(str(c)[:25] for c in row[:8])
-            print(f"[MSCI]   row {j}: {row_str}")
-        if len(t['rows']) > 3:
-            print(f"[MSCI]   ... + {len(t['rows']) - 3} more rows")
+        for j, row in enumerate(t['rows']):
+            # Show first 4 rows always, plus any row containing a % sign (data rows)
+            has_pct = any('%' in str(cell) for cell in row)
+            if j < 4 or has_pct:
+                preview = ' | '.join(str(c)[:25] for c in row[:9])
+                print(f"[MSCI]   r{j:2}: {preview}")
 
-    print(f"\n[MSCI] === DEBUG: JSON RESPONSES ({len(captured_json)}) ===")
-    for jr in captured_json[:5]:
-        snippet = jr['body'][:300].replace('\n', ' ')
-        print(f"[MSCI] {jr['url'][:80]}: {snippet}")
+    print(f"\n[MSCI] === JSON RESPONSES ({len(captured_json)}) ===")
+    for jr in captured_json:
+        snippet = jr['body'][:200].replace('\n', ' ')
+        print(f"[MSCI] {jr['url'][:80]}\n        {snippet}")
 
-    return parse_msci(dom_tables, captured_json, captured_responses)
+    return parse_msci(dom_tables, captured_json)
 
 
-def parse_msci(dom_tables, captured_json, captured_responses):
-    """Try multiple parsing strategies in order of reliability."""
+def parse_msci(dom_tables, captured_json):
+    """Parse country data from DOM tables and JSON responses."""
     results = {}
     country_aliases = build_country_aliases()
 
-    # ---- Strategy 1: DOM tables (flexible name search across first 3 cells) ----
+    # ---- Strategy 1: DOM tables ----
     for tbl in dom_tables:
         for row in tbl['rows']:
             if len(row) < 5:
                 continue
+
+            # Search first 3 cells for a recognized country name.
             canonical = None
             for cell in row[:3]:
-                key = cell.strip().upper()
-                key = re.sub(r'^MSCI\s+', '', key)
-                key = re.sub(r'\s+INDEX$', '', key)
-                key = key.strip()
+                key = re.sub(r'^MSCI\s+', '', cell.strip().upper())
+                key = re.sub(r'\s+INDEX$', '', key).strip()
                 if key in country_aliases:
                     canonical = country_aliases[key]
                     break
             if not canonical or canonical in results:
                 continue
 
+            # Pull numeric values from remaining cells.
             nums = []
             for cell in row:
-                cleaned = cell.replace(',', '').replace('%', '').replace('+', '').strip()
+                cleaned = str(cell).replace(',', '').replace('%', '').replace('+', '').strip()
                 if re.match(r'^-?\d+\.?\d*$', cleaned):
                     try:
                         nums.append(float(cleaned))
                     except ValueError:
                         pass
 
-            if len(nums) >= 4:
-                results[canonical] = {
-                    'day':   nums[0],
-                    'mtd':   nums[1],
-                    'ytd':   nums[2] if len(nums) >= 3 else None,
-                    'oneYr': nums[3] if len(nums) >= 4 else None,
-                }
+            # Expected MSCI columns: Last, Day%, MTD%, 3MTD%, YTD%, 1Yr%
+            # The "Last" price is usually large (>10); skip it if present.
+            # Then we want positions 0=Day, 1=MTD, [skip 3MTD], 2 or 3=YTD, last=1Yr
+            if len(nums) >= 5:
+                # Heuristic: if first number is > 50, it's the Last price — drop it.
+                if abs(nums[0]) > 50:
+                    nums = nums[1:]
+
+                # Map: [Day, MTD, 3MTD, YTD, 1Yr]  → we want Day, MTD, YTD, 1Yr (skip 3MTD)
+                if len(nums) >= 5:
+                    results[canonical] = {
+                        'day':   nums[0],
+                        'mtd':   nums[1],
+                        'ytd':   nums[3],
+                        'oneYr': nums[4],
+                    }
+                elif len(nums) >= 4:
+                    results[canonical] = {
+                        'day':   nums[0],
+                        'mtd':   nums[1],
+                        'ytd':   nums[2],
+                        'oneYr': nums[3],
+                    }
 
     if results:
-        print(f"[MSCI] DOM strategy yielded {len(results)} markets")
+        print(f"\n[MSCI] DOM strategy yielded {len(results)} countries:")
+        for c in sorted(results.keys())[:10]:
+            r = results[c]
+            print(f"[MSCI]   {c:18s} 1D={r['day']:+6.2f} MTD={r['mtd']:+6.2f} YTD={r['ytd']:+7.2f} 1Y={r['oneYr']:+7.2f}")
+        if len(results) > 10:
+            print(f"[MSCI]   ... and {len(results) - 10} more")
 
     # ---- Strategy 2: JSON responses ----
     for jr in captured_json:
@@ -238,7 +267,6 @@ def parse_msci(dom_tables, captured_json, captured_responses):
 
 
 def extract_from_json(obj, country_aliases, results=None):
-    """Walk a JSON structure looking for country name + return fields."""
     if results is None:
         results = {}
 
@@ -260,7 +288,7 @@ def extract_from_json(obj, country_aliases, results=None):
                             continue
                         lk = k.lower()
                         if '1d' in lk or 'day' in lk: day = float(v)
-                        elif 'mtd' in lk: mtd = float(v)
+                        elif 'mtd' in lk and '3' not in lk: mtd = float(v)
                         elif 'ytd' in lk: ytd = float(v)
                         elif '1y' in lk or '1yr' in lk or '12m' in lk or 'oneyear' in lk:
                             oneyr = float(v)
@@ -289,41 +317,46 @@ def build_country_aliases():
     a['CHINESE TAIPEI'] = 'Taiwan'
     a['UK'] = 'United Kingdom'
     a['GREAT BRITAIN'] = 'United Kingdom'
+    a['HONGKONG'] = 'Hong Kong'
+    a['NEWZEALAND'] = 'New Zealand'
+    a['SOUTHAFRICA'] = 'South Africa'
+    a['SAUDIARABIA'] = 'Saudi Arabia'
     return a
 
 
 # =========================================================================
-# FALLBACK: yfinance country-ETF proxies
+# SECONDARY: yfinance with curl_cffi browser TLS impersonation
 # =========================================================================
 def fetch_etf_returns():
-    """Fetch ETF history via yfinance and compute returns."""
+    """Fetch ETF history via yfinance using a curl_cffi session that
+    impersonates Chrome's TLS fingerprint, bypassing Yahoo's bot detection."""
     import yfinance as yf
 
-    print("\n[ETF] Fetching country ETF prices from Yahoo Finance...")
-    tickers = [m['etf'] for m in MARKETS.values()]
-    ticker_to_country = {m['etf']: c for c, m in MARKETS.items()}
-
+    # Set up the browser-impersonation session
     try:
-        df = yf.download(tickers, period='14mo', interval='1d',
-                         progress=False, group_by='ticker', auto_adjust=True,
-                         threads=True)
-    except Exception as e:
-        print(f"[ETF] yfinance batch download failed: {e}", file=sys.stderr)
-        return {}
+        from curl_cffi import requests as cffi_requests
+        session = cffi_requests.Session(impersonate='chrome124')
+        print("\n[ETF] Using curl_cffi session (Chrome 124 TLS impersonation)")
+    except ImportError:
+        print("\n[ETF] curl_cffi unavailable — falling back to default session", file=sys.stderr)
+        session = None
 
+    print("[ETF] Fetching country ETF prices from Yahoo Finance...")
     results = {}
 
-    for ticker in tickers:
-        country = ticker_to_country[ticker]
+    for country, meta in MARKETS.items():
+        ticker_sym = meta['etf']
         try:
-            if len(tickers) == 1:
-                sub = df
-            else:
-                sub = df[ticker]
+            t = yf.Ticker(ticker_sym, session=session) if session else yf.Ticker(ticker_sym)
+            hist = t.history(period='14mo', interval='1d', auto_adjust=True)
 
-            closes = sub['Close'].dropna()
+            if hist is None or len(hist) == 0:
+                print(f"[ETF] {country:18s} {ticker_sym:6s}  EMPTY", file=sys.stderr)
+                continue
+
+            closes = hist['Close'].dropna()
             if len(closes) < 30:
-                print(f"[ETF] {country:18s} {ticker:6s} only {len(closes)} closes — skip", file=sys.stderr)
+                print(f"[ETF] {country:18s} {ticker_sym:6s}  only {len(closes)} closes — skip", file=sys.stderr)
                 continue
 
             closes = closes.sort_index()
@@ -353,19 +386,70 @@ def fetch_etf_returns():
                 '_as_of': last_date.isoformat(),
             }
             r = results[country]
-            print(f"[ETF] {country:18s} {ticker:6s} 1D={r['day']:+6.2f}  "
+            print(f"[ETF] {country:18s} {ticker_sym:6s} 1D={r['day']:+6.2f}  "
                   f"MTD={r['mtd']:+6.2f}  YTD={r['ytd']:+7.2f}  1Y={r['oneYr']:+7.2f}")
 
         except Exception as e:
-            print(f"[ETF] {country:18s} {ticker:6s}  ERROR: {e}", file=sys.stderr)
+            print(f"[ETF] {country:18s} {ticker_sym:6s}  ERROR: {type(e).__name__}: {e}", file=sys.stderr)
 
     return results
 
 
 # =========================================================================
+# VALIDATOR
+# =========================================================================
+def validate_sources(msci_data, etf_data, threshold=2.0):
+    """Compare overlapping countries between MSCI and ETF proxy.
+    Returns a report dict suitable for embedding in the output JSON."""
+    print(f"\n[VALIDATE] Comparing MSCI vs ETF proxy (threshold: {threshold}%)...")
+    discrepancies = []
+    compared = 0
+
+    metric_labels = {'day': '1D', 'mtd': 'MTD', 'ytd': 'YTD', 'oneYr': '1Y'}
+
+    for country in MARKETS:
+        if country not in msci_data or country not in etf_data:
+            continue
+        compared += 1
+        m = msci_data[country]
+        e = etf_data[country]
+        for metric in ('day', 'mtd', 'ytd', 'oneYr'):
+            mv = m.get(metric)
+            ev = e.get(metric)
+            if mv is None or ev is None:
+                continue
+            diff = round(mv - ev, 2)
+            if abs(diff) >= threshold:
+                discrepancies.append({
+                    'country': country,
+                    'metric': metric_labels[metric],
+                    'msci': mv,
+                    'etf': ev,
+                    'diff': diff,
+                })
+
+    if discrepancies:
+        print(f"[VALIDATE] {len(discrepancies)} discrepancies of ≥{threshold}% (out of {compared} compared):")
+        for d in discrepancies[:15]:
+            print(f"[VALIDATE]   {d['country']:18s} {d['metric']:4s}  "
+                  f"MSCI={d['msci']:+7.2f}  ETF={d['etf']:+7.2f}  diff={d['diff']:+6.2f}")
+        if len(discrepancies) > 15:
+            print(f"[VALIDATE]   ... + {len(discrepancies) - 15} more")
+    else:
+        print(f"[VALIDATE] No discrepancies of ≥{threshold}% across {compared} countries")
+
+    return {
+        'compared': compared,
+        'threshold': threshold,
+        'discrepancyCount': len(discrepancies),
+        'discrepancies': discrepancies[:50],  # cap at 50 to keep JSON small
+    }
+
+
+# =========================================================================
 # ORCHESTRATION
 # =========================================================================
-def build_output(market_data, source, as_of=None):
+def build_output(market_data, source, validation=None, as_of=None):
     markets = []
     for country, meta in MARKETS.items():
         if country in market_data:
@@ -379,7 +463,7 @@ def build_output(market_data, source, as_of=None):
                 'region': meta['region'],
                 'type':   meta['type'],
             })
-    return {
+    out = {
         'lastUpdated': datetime.now(timezone.utc).isoformat(timespec='seconds'),
         'source': source,
         'asOf': as_of or datetime.now(timezone.utc).date().isoformat(),
@@ -387,6 +471,9 @@ def build_output(market_data, source, as_of=None):
         'expectedCount': len(MARKETS),
         'markets': markets,
     }
+    if validation:
+        out['validation'] = validation
+    return out
 
 
 def load_previous(path):
@@ -403,37 +490,51 @@ async def main():
     out_path.parent.mkdir(parents=True, exist_ok=True)
     previous = load_previous(out_path)
 
+    # Always run BOTH sources so we can validate when both succeed.
     msci_data = {}
+    etf_data = {}
+
     try:
         msci_data = await scrape_msci_playwright()
     except Exception as e:
-        print(f"[MSCI] scrape exception: {e}", file=sys.stderr)
+        print(f"[MSCI] scrape exception: {type(e).__name__}: {e}", file=sys.stderr)
 
+    try:
+        etf_data = fetch_etf_returns()
+    except Exception as e:
+        print(f"[ETF] fetch exception: {type(e).__name__}: {e}", file=sys.stderr)
+
+    # Validate when both have meaningful data
+    validation = None
+    if len(msci_data) >= 5 and len(etf_data) >= 5:
+        validation = validate_sources(msci_data, etf_data)
+
+    # Prefer MSCI when it gave us ≥30 of 44 markets
     if len(msci_data) >= 30:
-        print(f"\n[OK] MSCI captured {len(msci_data)}/{len(MARKETS)} — using MSCI as source")
-        output = build_output(msci_data, source='MSCI')
+        print(f"\n[OK] MSCI captured {len(msci_data)}/{len(MARKETS)} — using MSCI as primary source")
+        output = build_output(msci_data, source='MSCI', validation=validation)
+    elif len(etf_data) >= 30:
+        print(f"\n[OK] yfinance captured {len(etf_data)}/{len(MARKETS)} — using ETF proxy as source")
+        output = build_output(etf_data, source='ETF_PROXY', validation=validation)
     else:
-        print(f"\n[WARN] MSCI only captured {len(msci_data)} markets — falling back to yfinance")
-        try:
-            etf_data = fetch_etf_returns()
-            if len(etf_data) >= 30:
-                print(f"\n[OK] yfinance captured {len(etf_data)}/{len(MARKETS)} markets")
-                output = build_output(etf_data, source='ETF_PROXY')
-            else:
-                print(f"\n[ERR] yfinance only got {len(etf_data)} markets", file=sys.stderr)
-                if previous and previous.get('markets'):
-                    print("[OK] keeping previous data file")
-                    return 0
-                output = build_output(etf_data, source='ETF_PROXY' if etf_data else 'FAILED')
-        except Exception as e:
-            print(f"[ERR] yfinance exception: {e}", file=sys.stderr)
-            if previous and previous.get('markets'):
-                return 0
+        print(f"\n[ERR] Neither source produced ≥30 markets "
+              f"(MSCI={len(msci_data)}, ETF={len(etf_data)})", file=sys.stderr)
+        if previous and previous.get('markets'):
+            print("[OK] keeping previous data file")
+            return 0
+        # Last resort: use whichever has any data
+        if etf_data:
+            output = build_output(etf_data, source='ETF_PROXY', validation=validation)
+        elif msci_data:
+            output = build_output(msci_data, source='MSCI', validation=validation)
+        else:
             output = build_output({}, source='FAILED')
 
     out_path.write_text(json.dumps(output, indent=2))
     print(f"\n[OK] wrote {out_path}")
     print(f"      {output['marketsCount']} markets, source={output['source']}")
+    if validation:
+        print(f"      validation: {validation['discrepancyCount']} discrepancies of {validation['compared']} compared")
     return 0
 
 
