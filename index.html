@@ -1017,30 +1017,26 @@
     letter-spacing: 0.04em;
   }
 
-  /* ==================== ACTION LINK ==================== */
-  .link-action {
-    color: var(--ink-2);
+  /* ==================== TIMESTAMPS ==================== */
+  .timestamps-row {
+    display: flex;
+    gap: 36px;
+    align-items: flex-start;
+    text-align: right;
+  }
+  .timestamp-block .label em {
+    font-style: normal;
+    color: var(--ink-3);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    margin-left: 4px;
+  }
+  .timestamp-block .next-relative {
+    color: var(--accent);
     font-family: var(--font-mono);
     font-size: 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
-    text-decoration: none;
-    padding: 4px 0;
-    transition: color 0.15s var(--ease-out), letter-spacing 0.15s var(--ease-out);
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 2px;
-  }
-  .link-action:hover {
-    color: var(--accent);
-    letter-spacing: 0.18em;
-  }
-  .link-action .arrow {
-    transition: transform 0.2s var(--ease-out);
-  }
-  .link-action:hover .arrow {
-    transform: translate(2px, -2px);
+    margin-top: 3px;
+    letter-spacing: 0.06em;
   }
 
   /* ==================== RESPONSIVE ==================== */
@@ -1056,6 +1052,7 @@
     .container { padding: 20px 16px 40px; }
     header.masthead { grid-template-columns: 1fr; }
     .header-controls { align-items: flex-start; }
+    .timestamps-row { flex-direction: column; gap: 10px; align-items: flex-start; text-align: left; }
     .summary-grid { grid-template-columns: 1fr; }
     .filter-bar { grid-template-columns: 1fr; }
     .tab-btn { font-size: 17px; padding: 12px 16px; }
@@ -1083,18 +1080,21 @@
       <p class="subtitle">A cross-section of 44 developed and emerging equity markets, tracked by daily, month-to-date, quarter, year-to-date and multi-year returns.</p>
     </div>
     <div class="header-controls">
-      <div class="timestamp-block">
-        <div class="label">Last Updated</div>
-        <div class="value" id="lastUpdated">&mdash;</div>
+      <div class="timestamps-row">
+        <div class="timestamp-block">
+          <div class="label">Last Updated</div>
+          <div class="value" id="lastUpdated">&mdash;</div>
+        </div>
+        <div class="timestamp-block">
+          <div class="label">Next Update <em>tentative</em></div>
+          <div class="value" id="nextUpdate">&mdash;</div>
+          <div class="next-relative" id="nextUpdateRelative">&mdash;</div>
+        </div>
       </div>
       <button class="btn" id="refreshBtn">
         <span class="spinner-icon"></span>
         <span class="btn-label">Refresh Data</span>
       </button>
-      <a class="link-action" id="triggerScrapeLink" target="_blank" rel="noopener" title="Opens GitHub Actions to manually trigger a new MSCI scrape">
-        Trigger new MSCI scrape
-        <span class="arrow">↗</span>
-      </a>
     </div>
   </header>
 
@@ -1314,7 +1314,15 @@ const CONFIG = {
   githubUser: 'ketanjoshicfp',
   githubRepo: 'msci-dashboard',
   branch:     'main',
-  dataPath:   'data/msci-data.json'
+  dataPath:   'data/msci-data.json',
+  // Must mirror the cron in .github/workflows/scrape-msci.yml
+  // Current cron: '0 23 * * 1-5'  →  weekdays at 23:00 UTC
+  schedule: {
+    hour:    23,          // UTC
+    minute:  0,
+    weekdaysOnly: true,   // skip Sat (6) and Sun (0)
+    description: 'Mon to Fri at 23:00 UTC'
+  }
 };
 const DATA_URL = `https://raw.githubusercontent.com/${CONFIG.githubUser}/${CONFIG.githubRepo}/${CONFIG.branch}/${CONFIG.dataPath}`;
 
@@ -1492,6 +1500,54 @@ function showToast({ label = 'Refreshed', message = '', sub = '', error = false,
   toast.classList.add('visible');
   clearTimeout(toast._timer);
   toast._timer = setTimeout(() => toast.classList.remove('visible'), duration);
+}
+
+// ============================================================
+// SCHEDULE DISPLAY (when is the next scrape run?)
+// ============================================================
+function getNextScheduledRun() {
+  const { hour, minute, weekdaysOnly } = CONFIG.schedule;
+  const now = new Date();
+  const next = new Date();
+  next.setUTCHours(hour, minute, 0, 0);
+  if (next <= now) {
+    next.setUTCDate(next.getUTCDate() + 1);
+  }
+  if (weekdaysOnly) {
+    // 0 = Sunday, 6 = Saturday — skip weekends forward to Monday
+    while (next.getUTCDay() === 0 || next.getUTCDay() === 6) {
+      next.setUTCDate(next.getUTCDate() + 1);
+    }
+  }
+  return next;
+}
+
+function formatRelativeFuture(targetDate) {
+  const ms = targetDate.getTime() - Date.now();
+  if (ms <= 0) return 'now';
+  const totalMin = Math.floor(ms / 60000);
+  if (totalMin < 1) return 'in less than a minute';
+  if (totalMin < 60) return `in ${totalMin} min`;
+  const totalHr = Math.floor(totalMin / 60);
+  if (totalHr < 24) {
+    const rem = totalMin - totalHr * 60;
+    return rem >= 1 ? `in ${totalHr}h ${rem}m` : `in ${totalHr}h`;
+  }
+  const totalDays = Math.floor(totalHr / 24);
+  if (totalDays === 1) return 'tomorrow';
+  if (totalDays < 7) {
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    return `${dayNames[targetDate.getDay()]}`;
+  }
+  return `in ${totalDays} days`;
+}
+
+function updateNextScheduledDisplay() {
+  const nextDate = getNextScheduledRun();
+  const valEl = document.getElementById('nextUpdate');
+  const relEl = document.getElementById('nextUpdateRelative');
+  if (valEl) valEl.textContent = fmtTimestamp(nextDate);
+  if (relEl) relEl.textContent = `${formatRelativeFuture(nextDate)} · ${CONFIG.schedule.description}`;
 }
 
 /* Tween any DOM element's text content from one number to another */
@@ -2128,16 +2184,7 @@ function renderDataSourceBanner(meta) {
     'FAILED':      `Last scrape failed — showing nothing. Check the Actions tab for the error log.`,
   }[source] || `Source: ${source} (as of ${asOf})`;
 
-  let extra = '';
-  const v = meta.validation;
-  if (v && typeof v.compared === 'number' && v.compared > 0) {
-    const colour = v.discrepancyCount === 0 ? 'var(--pos)' : 'var(--accent)';
-    extra = `<br><span style="color: var(--ink-2); font-size: 11px;">Cross-source validation: ` +
-            `${v.compared} countries compared against ETF proxy, ` +
-            `<strong style="color: ${colour}">${v.discrepancyCount}</strong> ` +
-            `discrepancies of ≥${v.threshold}% (mostly MSCI Price-return vs ETF Total-return).</span>`;
-  }
-  label.innerHTML = sourceText + extra;
+  label.innerHTML = sourceText;
 }
 
 // ============================================================
@@ -2308,11 +2355,9 @@ function wireEvents() {
 // BOOT
 // ============================================================
 (async function init() {
-  // Wire up the "Trigger new scrape" link to the right Actions workflow URL
-  const triggerLink = document.getElementById('triggerScrapeLink');
-  if (triggerLink) {
-    triggerLink.href = `https://github.com/${CONFIG.githubUser}/${CONFIG.githubRepo}/actions/workflows/scrape-msci.yml`;
-  }
+  // Show "Next Update" right away and tick the relative time once per minute
+  updateNextScheduledDisplay();
+  setInterval(updateNextScheduledDisplay, 60 * 1000);
 
   wireEvents();
   setupScrollReveal();
