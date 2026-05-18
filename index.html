@@ -824,8 +824,12 @@
     <div class="metric-toggle" id="mapMetricToggle">
       <button data-metric="day">1D</button>
       <button data-metric="mtd">MTD</button>
+      <button data-metric="threeMtd">3MTD</button>
       <button data-metric="ytd">YTD</button>
       <button class="active" data-metric="oneYr">1Y</button>
+      <button data-metric="threeYr">3Y</button>
+      <button data-metric="fiveYr">5Y</button>
+      <button data-metric="tenYr">10Y</button>
     </div>
     <div class="map-wrap">
       <div class="map-controls">
@@ -853,8 +857,12 @@
       <div class="metric-toggle" id="barMetricToggle">
         <button data-metric="day">1D</button>
         <button data-metric="mtd">MTD</button>
+        <button data-metric="threeMtd">3MTD</button>
         <button data-metric="ytd">YTD</button>
         <button class="active" data-metric="oneYr">1Y</button>
+        <button data-metric="threeYr">3Y</button>
+        <button data-metric="fiveYr">5Y</button>
+        <button data-metric="tenYr">10Y</button>
       </div>
       <div class="chart-canvas-wrap tall">
         <canvas id="barChart"></canvas>
@@ -866,8 +874,12 @@
       <div class="metric-toggle" id="histMetricToggle">
         <button data-metric="day">1D</button>
         <button data-metric="mtd">MTD</button>
+        <button data-metric="threeMtd">3MTD</button>
         <button data-metric="ytd">YTD</button>
         <button class="active" data-metric="oneYr">1Y</button>
+        <button data-metric="threeYr">3Y</button>
+        <button data-metric="fiveYr">5Y</button>
+        <button data-metric="tenYr">10Y</button>
       </div>
       <div class="chart-canvas-wrap">
         <canvas id="histChart"></canvas>
@@ -885,14 +897,18 @@
       <table class="data-table" id="dataTable">
         <thead>
           <tr>
-            <th data-key="rank" style="width:60px">#</th>
+            <th data-key="rank" style="width:48px">#</th>
             <th data-key="country">Country</th>
             <th data-key="region">Region</th>
-            <th data-key="type" style="width:100px">Type</th>
+            <th data-key="type" style="width:90px">Type</th>
             <th data-key="day" class="num">1D %</th>
             <th data-key="mtd" class="num">MTD %</th>
+            <th data-key="threeMtd" class="num">3MTD %</th>
             <th data-key="ytd" class="num">YTD %</th>
             <th data-key="oneYr" class="num sorted">1Y %<span class="sort-arrow">↓</span></th>
+            <th data-key="threeYr" class="num">3Y %</th>
+            <th data-key="fiveYr" class="num">5Y %</th>
+            <th data-key="tenYr" class="num">10Y %</th>
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>
@@ -968,7 +984,7 @@ const COUNTRY_META = {
 // CONFIG — EDIT THESE TWO LINES AFTER YOU CREATE YOUR GITHUB REPO
 // =========================================================================
 const CONFIG = {
-  githubUser: 'ketanjoshicfp',   // <— change me
+  githubUser: 'YOUR_GITHUB_USERNAME',   // <— change me
   githubRepo: 'msci-dashboard',          // <— change me if different
   branch:     'main',
   dataPath:   'data/msci-data.json'
@@ -977,7 +993,7 @@ const CONFIG = {
 const DATA_URL = `https://raw.githubusercontent.com/${CONFIG.githubUser}/${CONFIG.githubRepo}/${CONFIG.branch}/${CONFIG.dataPath}`;
 
 // ---------- STATE ----------
-const CACHE_KEY = 'msci_dashboard_cache_v2';
+const CACHE_KEY = 'msci_dashboard_cache_v3';
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 
 const state = {
@@ -1024,13 +1040,17 @@ async function fetchMarketData() {
   // Enrich each row with region/type (in case the JSON is sparse) and return.
   return {
     markets: payload.markets.map(d => ({
-      country: d.country,
-      day:     d.day,
-      mtd:     d.mtd,
-      ytd:     d.ytd,
-      oneYr:   d.oneYr,
-      region:  d.region || (COUNTRY_META[d.country] && COUNTRY_META[d.country].region) || 'Other',
-      type:    d.type   || (COUNTRY_META[d.country] && COUNTRY_META[d.country].type)   || 'Developed'
+      country:  d.country,
+      day:      d.day,
+      mtd:      d.mtd,
+      threeMtd: d.threeMtd,
+      ytd:      d.ytd,
+      oneYr:    d.oneYr,
+      threeYr:  d.threeYr,
+      fiveYr:   d.fiveYr,
+      tenYr:    d.tenYr,
+      region:   d.region || (COUNTRY_META[d.country] && COUNTRY_META[d.country].region) || 'Other',
+      type:     d.type   || (COUNTRY_META[d.country] && COUNTRY_META[d.country].type)   || 'Developed'
     })),
     meta: {
       lastUpdated: payload.lastUpdated,
@@ -1160,7 +1180,7 @@ function renderTable() {
 
   const tbody = document.getElementById('tableBody');
   if (!sorted.length) {
-    tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state">No markets match your filters.</div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12"><div class="empty-state">No markets match your filters.</div></td></tr>';
   } else {
     tbody.innerHTML = sorted.map((d, i) => `
       <tr data-country="${d.country}">
@@ -1170,8 +1190,12 @@ function renderTable() {
         <td><span class="badge ${d.type === 'Developed' ? 'dev' : 'emerg'}">${d.type}</span></td>
         <td><span class="pct ${pctClass(d.day)}">${fmtPct(d.day)}</span></td>
         <td><span class="pct ${pctClass(d.mtd)}">${fmtPct(d.mtd)}</span></td>
+        <td><span class="pct ${pctClass(d.threeMtd)}">${fmtPct(d.threeMtd)}</span></td>
         <td><span class="pct ${pctClass(d.ytd)}">${fmtPct(d.ytd)}</span></td>
         <td><span class="pct ${pctClass(d.oneYr)}">${fmtPct(d.oneYr)}</span></td>
+        <td><span class="pct ${pctClass(d.threeYr)}">${fmtPct(d.threeYr)}</span></td>
+        <td><span class="pct ${pctClass(d.fiveYr)}">${fmtPct(d.fiveYr)}</span></td>
+        <td><span class="pct ${pctClass(d.tenYr)}">${fmtPct(d.tenYr)}</span></td>
       </tr>
     `).join('');
   }
@@ -1197,7 +1221,9 @@ function renderTable() {
 // ---------- BAR CHART ----------
 function renderBarChart() {
   const metric = state.barMetric;
-  const sorted = [...state.filtered].sort((a, b) => b[metric] - a[metric]);
+  // Filter out countries where this metric is null (e.g. 10Y for newer ETFs)
+  const withData = state.filtered.filter(d => d[metric] !== null && d[metric] !== undefined);
+  const sorted = withData.sort((a, b) => b[metric] - a[metric]);
   const labels = sorted.map(d => d.country);
   const values = sorted.map(d => d[metric]);
   const colors = values.map(v => v >= 0 ? '#4ade80' : '#f87171');
@@ -1234,7 +1260,11 @@ function renderBarChart() {
           titleFont: { family: 'Inter', size: 13 },
           bodyFont: { family: 'JetBrains Mono', size: 11 },
           callbacks: {
-            label: ctx => `${metric.toUpperCase()}: ${fmtPct(ctx.parsed.x)}`
+            label: ctx => {
+              const niceLabel = ({ day: '1D', mtd: 'MTD', threeMtd: '3MTD', ytd: 'YTD',
+                                   oneYr: '1Y', threeYr: '3Y', fiveYr: '5Y', tenYr: '10Y' })[metric] || metric;
+              return `${niceLabel}: ${fmtPct(ctx.parsed.x)}`;
+            }
           }
         }
       },
@@ -1264,7 +1294,7 @@ function renderBarChart() {
 // ---------- HISTOGRAM ----------
 function renderHistogram() {
   const metric = state.histMetric;
-  const values = state.filtered.map(d => d[metric]);
+  const values = state.filtered.map(d => d[metric]).filter(v => v !== null && v !== undefined);
 
   if (!values.length) {
     if (state.histChart) state.histChart.destroy();
@@ -1435,7 +1465,8 @@ function updateMapColors() {
     });
 
   document.getElementById('mapMetricLabel').textContent =
-    'Coloured by ' + ({ day: '1D', mtd: 'MTD', ytd: 'YTD', oneYr: '1Y' })[metric] + ' return';
+    'Coloured by ' + ({ day: '1D', mtd: 'MTD', threeMtd: '3MTD', ytd: 'YTD',
+                        oneYr: '1Y', threeYr: '3Y', fiveYr: '5Y', tenYr: '10Y' })[metric] + ' return';
 }
 
 function handleMapHover(event, d) {
@@ -1452,8 +1483,12 @@ function handleMapHover(event, d) {
     <div class="tooltip-region">${record.region} · ${record.type}</div>
     <div class="tooltip-row"><span class="lbl">1D</span><span class="val ${pctClass(record.day)}">${fmtPct(record.day)}</span></div>
     <div class="tooltip-row"><span class="lbl">MTD</span><span class="val ${pctClass(record.mtd)}">${fmtPct(record.mtd)}</span></div>
+    <div class="tooltip-row"><span class="lbl">3MTD</span><span class="val ${pctClass(record.threeMtd)}">${fmtPct(record.threeMtd)}</span></div>
     <div class="tooltip-row"><span class="lbl">YTD</span><span class="val ${pctClass(record.ytd)}">${fmtPct(record.ytd)}</span></div>
     <div class="tooltip-row"><span class="lbl">1Y</span><span class="val ${pctClass(record.oneYr)}">${fmtPct(record.oneYr)}</span></div>
+    <div class="tooltip-row"><span class="lbl">3Y</span><span class="val ${pctClass(record.threeYr)}">${fmtPct(record.threeYr)}</span></div>
+    <div class="tooltip-row"><span class="lbl">5Y</span><span class="val ${pctClass(record.fiveYr)}">${fmtPct(record.fiveYr)}</span></div>
+    <div class="tooltip-row"><span class="lbl">10Y</span><span class="val ${pctClass(record.tenYr)}">${fmtPct(record.tenYr)}</span></div>
   `;
 
   const wrap = document.querySelector('.map-wrap');
