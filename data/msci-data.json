@@ -1,8 +1,387 @@
 {
-  "lastUpdated": "2026-05-18T13:05:33+00:00",
-  "source": "FAILED",
+  "lastUpdated": "2026-05-18T13:18:23+00:00",
+  "source": "ETF_PROXY",
   "asOf": "2026-05-18",
-  "marketsCount": 0,
+  "marketsCount": 42,
   "expectedCount": 44,
-  "markets": []
+  "markets": [
+    {
+      "country": "USA",
+      "day": -1.11,
+      "mtd": -0.51,
+      "ytd": 5.08,
+      "oneYr": 13.72,
+      "region": "Americas",
+      "type": "Developed"
+    },
+    {
+      "country": "Canada",
+      "day": -1.25,
+      "mtd": -1.98,
+      "ytd": 6.51,
+      "oneYr": 33.11,
+      "region": "Americas",
+      "type": "Developed"
+    },
+    {
+      "country": "Australia",
+      "day": -1.91,
+      "mtd": -2.61,
+      "ytd": 9.66,
+      "oneYr": 16.08,
+      "region": "Asia-Pacific",
+      "type": "Developed"
+    },
+    {
+      "country": "Hong Kong",
+      "day": -1.47,
+      "mtd": 1.43,
+      "ytd": 13.22,
+      "oneYr": 34.95,
+      "region": "Asia-Pacific",
+      "type": "Developed"
+    },
+    {
+      "country": "Japan",
+      "day": -1.08,
+      "mtd": 2.21,
+      "ytd": 12.79,
+      "oneYr": 31.73,
+      "region": "Asia-Pacific",
+      "type": "Developed"
+    },
+    {
+      "country": "New Zealand",
+      "day": -2.42,
+      "mtd": -1.32,
+      "ytd": -2.74,
+      "oneYr": -1.26,
+      "region": "Asia-Pacific",
+      "type": "Developed"
+    },
+    {
+      "country": "Singapore",
+      "day": -0.45,
+      "mtd": -0.1,
+      "ytd": 5.23,
+      "oneYr": 18.03,
+      "region": "Asia-Pacific",
+      "type": "Developed"
+    },
+    {
+      "country": "Israel",
+      "day": -2.89,
+      "mtd": -0.58,
+      "ytd": 18.15,
+      "oneYr": 59.65,
+      "region": "EMEA",
+      "type": "Developed"
+    },
+    {
+      "country": "Austria",
+      "day": -1.12,
+      "mtd": -0.2,
+      "ytd": 9.81,
+      "oneYr": 42.09,
+      "region": "EMEA",
+      "type": "Developed"
+    },
+    {
+      "country": "Belgium",
+      "day": -1.21,
+      "mtd": 2.22,
+      "ytd": 7.78,
+      "oneYr": 26.5,
+      "region": "EMEA",
+      "type": "Developed"
+    },
+    {
+      "country": "Denmark",
+      "day": -1.59,
+      "mtd": 0.3,
+      "ytd": -3.71,
+      "oneYr": 2.53,
+      "region": "EMEA",
+      "type": "Developed"
+    },
+    {
+      "country": "Finland",
+      "day": -2.1,
+      "mtd": -1.2,
+      "ytd": 13.22,
+      "oneYr": 41.06,
+      "region": "EMEA",
+      "type": "Developed"
+    },
+    {
+      "country": "France",
+      "day": -1.93,
+      "mtd": -2.58,
+      "ytd": -1.84,
+      "oneYr": 7.85,
+      "region": "EMEA",
+      "type": "Developed"
+    },
+    {
+      "country": "Germany",
+      "day": -2.08,
+      "mtd": -2.11,
+      "ytd": -2.66,
+      "oneYr": 2.93,
+      "region": "EMEA",
+      "type": "Developed"
+    },
+    {
+      "country": "Ireland",
+      "day": -1.65,
+      "mtd": -2.18,
+      "ytd": -1.67,
+      "oneYr": 18.32,
+      "region": "EMEA",
+      "type": "Developed"
+    },
+    {
+      "country": "Italy",
+      "day": -2.06,
+      "mtd": -0.17,
+      "ytd": 6.13,
+      "oneYr": 27.76,
+      "region": "EMEA",
+      "type": "Developed"
+    },
+    {
+      "country": "Netherlands",
+      "day": -1.86,
+      "mtd": 2.77,
+      "ytd": 13.01,
+      "oneYr": 29.78,
+      "region": "EMEA",
+      "type": "Developed"
+    },
+    {
+      "country": "Norway",
+      "day": -0.75,
+      "mtd": -1.44,
+      "ytd": 28.25,
+      "oneYr": 42.99,
+      "region": "EMEA",
+      "type": "Developed"
+    },
+    {
+      "country": "Spain",
+      "day": -1.14,
+      "mtd": -1.84,
+      "ytd": 3.19,
+      "oneYr": 36.59,
+      "region": "EMEA",
+      "type": "Developed"
+    },
+    {
+      "country": "Sweden",
+      "day": -2.21,
+      "mtd": -4.12,
+      "ytd": 0.69,
+      "oneYr": 12.5,
+      "region": "EMEA",
+      "type": "Developed"
+    },
+    {
+      "country": "Switzerland",
+      "day": -1.05,
+      "mtd": -0.39,
+      "ytd": 1.95,
+      "oneYr": 15.3,
+      "region": "EMEA",
+      "type": "Developed"
+    },
+    {
+      "country": "United Kingdom",
+      "day": -2.27,
+      "mtd": -3.35,
+      "ytd": 3.62,
+      "oneYr": 22.17,
+      "region": "EMEA",
+      "type": "Developed"
+    },
+    {
+      "country": "Brazil",
+      "day": -2.42,
+      "mtd": -8.74,
+      "ytd": 14.04,
+      "oneYr": 36.37,
+      "region": "Americas",
+      "type": "Emerging"
+    },
+    {
+      "country": "Chile",
+      "day": -2.24,
+      "mtd": -6.03,
+      "ytd": -2.87,
+      "oneYr": 21.65,
+      "region": "Americas",
+      "type": "Emerging"
+    },
+    {
+      "country": "Colombia",
+      "day": -2.04,
+      "mtd": -6.61,
+      "ytd": 1.12,
+      "oneYr": 34.08,
+      "region": "Americas",
+      "type": "Emerging"
+    },
+    {
+      "country": "Peru",
+      "day": -4.63,
+      "mtd": 0.81,
+      "ytd": 10.59,
+      "oneYr": 81.67,
+      "region": "Americas",
+      "type": "Emerging"
+    },
+    {
+      "country": "Mexico",
+      "day": -2.27,
+      "mtd": 1.01,
+      "ytd": 11.37,
+      "oneYr": 35.19,
+      "region": "Americas",
+      "type": "Emerging"
+    },
+    {
+      "country": "China",
+      "day": -2.51,
+      "mtd": -1.62,
+      "ytd": -5.71,
+      "oneYr": 6.1,
+      "region": "Asia-Pacific",
+      "type": "Emerging"
+    },
+    {
+      "country": "India",
+      "day": -0.77,
+      "mtd": -2.89,
+      "ytd": -11.21,
+      "oneYr": -12.38,
+      "region": "Asia-Pacific",
+      "type": "Emerging"
+    },
+    {
+      "country": "Indonesia",
+      "day": -1.19,
+      "mtd": -5.29,
+      "ytd": -24.39,
+      "oneYr": -19.77,
+      "region": "Asia-Pacific",
+      "type": "Emerging"
+    },
+    {
+      "country": "Korea",
+      "day": -6.12,
+      "mtd": 11.26,
+      "ytd": 83.97,
+      "oneYr": 211.02,
+      "region": "Asia-Pacific",
+      "type": "Emerging"
+    },
+    {
+      "country": "Malaysia",
+      "day": -1.69,
+      "mtd": 1.12,
+      "ytd": 8.55,
+      "oneYr": 22.88,
+      "region": "Asia-Pacific",
+      "type": "Emerging"
+    },
+    {
+      "country": "Philippines",
+      "day": -0.65,
+      "mtd": 1.82,
+      "ytd": -1.12,
+      "oneYr": -9.0,
+      "region": "Asia-Pacific",
+      "type": "Emerging"
+    },
+    {
+      "country": "Taiwan",
+      "day": -4.4,
+      "mtd": 1.56,
+      "ytd": 43.68,
+      "oneYr": 76.84,
+      "region": "Asia-Pacific",
+      "type": "Emerging"
+    },
+    {
+      "country": "Thailand",
+      "day": -2.88,
+      "mtd": 0.54,
+      "ytd": 19.14,
+      "oneYr": 32.94,
+      "region": "Asia-Pacific",
+      "type": "Emerging"
+    },
+    {
+      "country": "South Africa",
+      "day": -4.43,
+      "mtd": -1.26,
+      "ytd": -2.09,
+      "oneYr": 40.71,
+      "region": "EMEA",
+      "type": "Emerging"
+    },
+    {
+      "country": "Saudi Arabia",
+      "day": -0.62,
+      "mtd": -2.07,
+      "ytd": 5.16,
+      "oneYr": -1.76,
+      "region": "EMEA",
+      "type": "Emerging"
+    },
+    {
+      "country": "UAE",
+      "day": -0.63,
+      "mtd": -1.61,
+      "ytd": -1.05,
+      "oneYr": 8.0,
+      "region": "EMEA",
+      "type": "Emerging"
+    },
+    {
+      "country": "Qatar",
+      "day": -0.37,
+      "mtd": -0.53,
+      "ytd": -0.73,
+      "oneYr": 2.8,
+      "region": "EMEA",
+      "type": "Emerging"
+    },
+    {
+      "country": "Turkey",
+      "day": -2.18,
+      "mtd": -2.87,
+      "ytd": 19.9,
+      "oneYr": 32.67,
+      "region": "EMEA",
+      "type": "Emerging"
+    },
+    {
+      "country": "Poland",
+      "day": -2.64,
+      "mtd": 0.73,
+      "ytd": 9.86,
+      "oneYr": 33.35,
+      "region": "EMEA",
+      "type": "Emerging"
+    },
+    {
+      "country": "Greece",
+      "day": -2.76,
+      "mtd": 0.79,
+      "ytd": 6.96,
+      "oneYr": 40.12,
+      "region": "EMEA",
+      "type": "Emerging"
+    }
+  ]
 }
