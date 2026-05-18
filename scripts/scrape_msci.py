@@ -1,26 +1,19 @@
 """
-MSCI World Markets Scraper
-==========================
+MSCI World Markets Scraper (v2)
+================================
 
 Strategy:
   1. PRIMARY: Use Playwright to load MSCI's end-of-day data page,
-     intercept the XHR responses that populate the performance table,
-     and extract 1D / MTD / YTD / 1Y returns for all 44 markets.
-  2. FALLBACK: If MSCI scraping fails, fall back to country ETF proxies
-     fetched from Stooq (free, no auth, returns close to MSCI indices
-     because the ETFs are designed to track them).
+     intercept the XHR responses + scrape the rendered DOM table.
+  2. FALLBACK: If MSCI returns nothing usable, fetch country-ETF prices
+     from Yahoo Finance via the `yfinance` package and compute returns.
 
-Output: data/msci-data.json with this shape:
-  {
-    "lastUpdated": "2026-05-18T22:00:00Z",
-    "source": "MSCI" | "ETF_PROXY",
-    "asOf": "2026-05-16",
-    "markets": [
-      {"country": "USA", "day": 0.42, "mtd": 2.18, "ytd": 8.34,
-       "oneYr": 18.62, "region": "Americas", "type": "Developed"},
-      ...
-    ]
-  }
+Why yfinance and not Stooq:
+  Stooq blocks GitHub Actions IP ranges. Yahoo Finance does not.
+  yfinance is the de-facto standard library for free EOD data and
+  works reliably from cloud runners.
+
+Output: data/msci-data.json
 """
 
 import asyncio
@@ -31,78 +24,72 @@ import os
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
-# ---------- COUNTRY METADATA ----------
-# MSCI download codes (from JeremyBowyer/MSCI-Indices public mapping)
-# Format: "internalId,style,size" — these feed both the XHR scrape
-# and the legacy XLS endpoint.
+# =========================================================================
+# COUNTRY METADATA
+# =========================================================================
+# etf: iShares MSCI country ETF ticker on Yahoo Finance. These ETFs are
+# explicitly designed to track the corresponding MSCI country index
+# (correlation 0.98+).
 MARKETS = {
     # ---- DEVELOPED (23) ----
-    'USA':           {'msci_code': '104,C,30',   'etf': 'spy.us',  'region': 'Americas',     'type': 'Developed'},
-    'Canada':        {'msci_code': '64,C,30',    'etf': 'ewc.us',  'region': 'Americas',     'type': 'Developed'},
-    'Australia':     {'msci_code': '60,C,30',    'etf': 'ewa.us',  'region': 'Asia-Pacific', 'type': 'Developed'},
-    'Hong Kong':     {'msci_code': '75,C,30',    'etf': 'ewh.us',  'region': 'Asia-Pacific', 'type': 'Developed'},
-    'Japan':         {'msci_code': '83,C,30',    'etf': 'ewj.us',  'region': 'Asia-Pacific', 'type': 'Developed'},
-    'New Zealand':   {'msci_code': '90,C,30',    'etf': 'enzl.us', 'region': 'Asia-Pacific', 'type': 'Developed'},
-    'Singapore':     {'msci_code': '181,C,30',   'etf': 'ews.us',  'region': 'Asia-Pacific', 'type': 'Developed'},
-    'Israel':        {'msci_code': '2352,C,30',  'etf': 'eis.us',  'region': 'EMEA',         'type': 'Developed'},
-    'Austria':       {'msci_code': '61,C,30',    'etf': 'ewo.us',  'region': 'EMEA',         'type': 'Developed'},
-    'Belgium':       {'msci_code': '62,C,30',    'etf': 'ewk.us',  'region': 'EMEA',         'type': 'Developed'},
-    'Denmark':       {'msci_code': '69,C,30',    'etf': 'edenx.us','region': 'EMEA',         'type': 'Developed'},
-    'Finland':       {'msci_code': '70,C,30',    'etf': 'efnl.us', 'region': 'EMEA',         'type': 'Developed'},
-    'France':        {'msci_code': '71,C,30',    'etf': 'ewq.us',  'region': 'EMEA',         'type': 'Developed'},
-    'Germany':       {'msci_code': '73,C,30',    'etf': 'ewg.us',  'region': 'EMEA',         'type': 'Developed'},
-    'Ireland':       {'msci_code': '79,C,30',    'etf': 'eirl.us', 'region': 'EMEA',         'type': 'Developed'},
-    'Italy':         {'msci_code': '81,C,30',    'etf': 'ewi.us',  'region': 'EMEA',         'type': 'Developed'},
-    'Netherlands':   {'msci_code': '89,C,30',    'etf': 'ewn.us',  'region': 'EMEA',         'type': 'Developed'},
-    'Norway':        {'msci_code': '91,C,30',    'etf': 'enor.us', 'region': 'EMEA',         'type': 'Developed'},
-    'Portugal':      {'msci_code': '1190,C,30',  'etf': 'pgal.us', 'region': 'EMEA',         'type': 'Developed'},
-    'Spain':         {'msci_code': '98,C,30',    'etf': 'ewp.us',  'region': 'EMEA',         'type': 'Developed'},
-    'Sweden':        {'msci_code': '99,C,30',    'etf': 'ewd.us',  'region': 'EMEA',         'type': 'Developed'},
-    'Switzerland':   {'msci_code': '100,C,30',   'etf': 'ewl.us',  'region': 'EMEA',         'type': 'Developed'},
-    'United Kingdom':{'msci_code': '103,C,30',   'etf': 'ewu.us',  'region': 'EMEA',         'type': 'Developed'},
+    'USA':           {'etf': 'EUSA', 'region': 'Americas',     'type': 'Developed'},
+    'Canada':        {'etf': 'EWC',  'region': 'Americas',     'type': 'Developed'},
+    'Australia':     {'etf': 'EWA',  'region': 'Asia-Pacific', 'type': 'Developed'},
+    'Hong Kong':     {'etf': 'EWH',  'region': 'Asia-Pacific', 'type': 'Developed'},
+    'Japan':         {'etf': 'EWJ',  'region': 'Asia-Pacific', 'type': 'Developed'},
+    'New Zealand':   {'etf': 'ENZL', 'region': 'Asia-Pacific', 'type': 'Developed'},
+    'Singapore':     {'etf': 'EWS',  'region': 'Asia-Pacific', 'type': 'Developed'},
+    'Israel':        {'etf': 'EIS',  'region': 'EMEA',         'type': 'Developed'},
+    'Austria':       {'etf': 'EWO',  'region': 'EMEA',         'type': 'Developed'},
+    'Belgium':       {'etf': 'EWK',  'region': 'EMEA',         'type': 'Developed'},
+    'Denmark':       {'etf': 'EDEN', 'region': 'EMEA',         'type': 'Developed'},
+    'Finland':       {'etf': 'EFNL', 'region': 'EMEA',         'type': 'Developed'},
+    'France':        {'etf': 'EWQ',  'region': 'EMEA',         'type': 'Developed'},
+    'Germany':       {'etf': 'EWG',  'region': 'EMEA',         'type': 'Developed'},
+    'Ireland':       {'etf': 'EIRL', 'region': 'EMEA',         'type': 'Developed'},
+    'Italy':         {'etf': 'EWI',  'region': 'EMEA',         'type': 'Developed'},
+    'Netherlands':   {'etf': 'EWN',  'region': 'EMEA',         'type': 'Developed'},
+    'Norway':        {'etf': 'ENOR', 'region': 'EMEA',         'type': 'Developed'},
+    'Portugal':      {'etf': 'PGAL', 'region': 'EMEA',         'type': 'Developed'},
+    'Spain':         {'etf': 'EWP',  'region': 'EMEA',         'type': 'Developed'},
+    'Sweden':        {'etf': 'EWD',  'region': 'EMEA',         'type': 'Developed'},
+    'Switzerland':   {'etf': 'EWL',  'region': 'EMEA',         'type': 'Developed'},
+    'United Kingdom':{'etf': 'EWU',  'region': 'EMEA',         'type': 'Developed'},
 
     # ---- EMERGING (21) ----
-    'Brazil':        {'msci_code': '63,C,30',    'etf': 'ewz.us',  'region': 'Americas',     'type': 'Emerging'},
-    'Chile':         {'msci_code': '65,C,30',    'etf': 'ech.us',  'region': 'Americas',     'type': 'Emerging'},
-    'Colombia':      {'msci_code': '1890,C,30',  'etf': 'gxg.us',  'region': 'Americas',     'type': 'Emerging'},
-    'Peru':          {'msci_code': '2323,C,30',  'etf': 'epu.us',  'region': 'Americas',     'type': 'Emerging'},
-    'Mexico':        {'msci_code': '2,C,30',     'etf': 'eww.us',  'region': 'Americas',     'type': 'Emerging'},
-    'China':         {'msci_code': '2713,C,30',  'etf': 'mchi.us', 'region': 'Asia-Pacific', 'type': 'Emerging'},
-    'India':         {'msci_code': '77,C,30',    'etf': 'inda.us', 'region': 'Asia-Pacific', 'type': 'Emerging'},
-    'Indonesia':     {'msci_code': '2879,C,30',  'etf': 'eido.us', 'region': 'Asia-Pacific', 'type': 'Emerging'},
-    'Korea':         {'msci_code': '85,C,30',    'etf': 'ewy.us',  'region': 'Asia-Pacific', 'type': 'Emerging'},
-    'Malaysia':      {'msci_code': '2880,C,30',  'etf': 'ewm.us',  'region': 'Asia-Pacific', 'type': 'Emerging'},
-    'Philippines':   {'msci_code': '4,C,30',     'etf': 'ephe.us', 'region': 'Asia-Pacific', 'type': 'Emerging'},
-    'Taiwan':        {'msci_code': '66,C,30',    'etf': 'ewt.us',  'region': 'Asia-Pacific', 'type': 'Emerging'},
-    'Thailand':      {'msci_code': '2881,C,30',  'etf': 'thd.us',  'region': 'Asia-Pacific', 'type': 'Emerging'},
-    'South Africa':  {'msci_code': '2428,C,30',  'etf': 'eza.us',  'region': 'EMEA',         'type': 'Emerging'},
-    'Egypt':         {'msci_code': '2877,C,30',  'etf': 'egpt.us', 'region': 'EMEA',         'type': 'Emerging'},
-    'Saudi Arabia':  {'msci_code': '136064,C,30','etf': 'ksa.us',  'region': 'EMEA',         'type': 'Emerging'},
-    'UAE':           {'msci_code': '25560,C,30', 'etf': 'uae.us',  'region': 'EMEA',         'type': 'Emerging'},
-    'Qatar':         {'msci_code': '25558,C,30', 'etf': 'qat.us',  'region': 'EMEA',         'type': 'Emerging'},
-    'Turkey':        {'msci_code': '102,C,30',   'etf': 'tur.us',  'region': 'EMEA',         'type': 'Emerging'},
-    'Poland':        {'msci_code': '95,C,30',    'etf': 'epol.us', 'region': 'EMEA',         'type': 'Emerging'},
-    'Greece':        {'msci_code': '1146,C,30',  'etf': 'grek.us', 'region': 'EMEA',         'type': 'Emerging'},
+    'Brazil':        {'etf': 'EWZ',  'region': 'Americas',     'type': 'Emerging'},
+    'Chile':         {'etf': 'ECH',  'region': 'Americas',     'type': 'Emerging'},
+    'Colombia':      {'etf': 'GXG',  'region': 'Americas',     'type': 'Emerging'},
+    'Peru':          {'etf': 'EPU',  'region': 'Americas',     'type': 'Emerging'},
+    'Mexico':        {'etf': 'EWW',  'region': 'Americas',     'type': 'Emerging'},
+    'China':         {'etf': 'MCHI', 'region': 'Asia-Pacific', 'type': 'Emerging'},
+    'India':         {'etf': 'INDA', 'region': 'Asia-Pacific', 'type': 'Emerging'},
+    'Indonesia':     {'etf': 'EIDO', 'region': 'Asia-Pacific', 'type': 'Emerging'},
+    'Korea':         {'etf': 'EWY',  'region': 'Asia-Pacific', 'type': 'Emerging'},
+    'Malaysia':      {'etf': 'EWM',  'region': 'Asia-Pacific', 'type': 'Emerging'},
+    'Philippines':   {'etf': 'EPHE', 'region': 'Asia-Pacific', 'type': 'Emerging'},
+    'Taiwan':        {'etf': 'EWT',  'region': 'Asia-Pacific', 'type': 'Emerging'},
+    'Thailand':      {'etf': 'THD',  'region': 'Asia-Pacific', 'type': 'Emerging'},
+    'South Africa':  {'etf': 'EZA',  'region': 'EMEA',         'type': 'Emerging'},
+    'Egypt':         {'etf': 'EGPT', 'region': 'EMEA',         'type': 'Emerging'},
+    'Saudi Arabia':  {'etf': 'KSA',  'region': 'EMEA',         'type': 'Emerging'},
+    'UAE':           {'etf': 'UAE',  'region': 'EMEA',         'type': 'Emerging'},
+    'Qatar':         {'etf': 'QAT',  'region': 'EMEA',         'type': 'Emerging'},
+    'Turkey':        {'etf': 'TUR',  'region': 'EMEA',         'type': 'Emerging'},
+    'Poland':        {'etf': 'EPOL', 'region': 'EMEA',         'type': 'Emerging'},
+    'Greece':        {'etf': 'GREK', 'region': 'EMEA',         'type': 'Emerging'},
 }
 
 
 # =========================================================================
-# PRIMARY PATH: Playwright scrape of MSCI's end-of-day data search page
+# PRIMARY: Playwright scrape of MSCI's end-of-day data search page
 # =========================================================================
 async def scrape_msci_playwright():
-    """
-    Loads the MSCI Index Data Search page in headless Chromium, intercepts the
-    XHR responses that populate the country performance table, and parses out
-    the 1D / MTD / YTD / 1Y returns.
-
-    MSCI's site is JSF-based (JavaServer Faces) and the data lands via AJAX
-    after the page configures itself. We listen on all responses and look
-    for ones that contain the country names + performance numbers.
-    """
     from playwright.async_api import async_playwright
 
     print("[MSCI] Launching headless Chromium...")
     captured_responses = []
+    captured_json = []
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True, args=['--no-sandbox'])
@@ -114,259 +101,263 @@ async def scrape_msci_playwright():
         )
         page = await context.new_page()
 
-        # Intercept all XHR / fetch responses
         async def handle_response(response):
             url = response.url
             ct = response.headers.get('content-type', '').lower()
-            if any(k in url.lower() for k in ['indexperf', 'index-data', 'performance', 'chart', 'webapp']):
-                try:
+            try:
+                if 'application/json' in ct and 'msci' in url.lower():
+                    body = await response.text()
+                    captured_json.append({'url': url, 'body': body})
+                    print(f"[MSCI] JSON {response.status} {url[:120]} ({len(body)}b)")
+                elif any(k in url.lower() for k in ['indexperf', 'index-data', 'performance', 'webapp']):
                     body = await response.text()
                     if body and len(body) > 50:
-                        captured_responses.append({
-                            'url': url,
-                            'content_type': ct,
-                            'body': body[:200000],  # cap at 200KB per response
-                        })
-                        print(f"[MSCI] captured {response.status} {url[:80]} ({ct}, {len(body)}b)")
-                except Exception as e:
-                    pass
+                        captured_responses.append({'url': url, 'body': body[:200000]})
+            except Exception:
+                pass
 
         page.on('response', handle_response)
 
-        # Visit the MSCI Index Data Search page
-        url = 'https://app2.msci.com/products/index-data-search/'
-        print(f"[MSCI] Navigating to {url}")
         try:
-            await page.goto(url, wait_until='networkidle', timeout=60000)
-        except Exception as e:
-            print(f"[MSCI] navigation timed out: {e}", file=sys.stderr)
-
-        # Give JS a moment to fire follow-up requests
-        await page.wait_for_timeout(8000)
-
-        # Try to click the "Country" tab + Search button to force data load
-        try:
-            await page.click('text=Country', timeout=5000)
-            await page.wait_for_timeout(3000)
-        except Exception:
-            pass
-
-        try:
-            search_btn = page.locator('button:has-text("Search"), input[type=submit][value*="Search" i]').first
-            if await search_btn.count() > 0:
-                await search_btn.click(timeout=5000)
-                await page.wait_for_timeout(5000)
-        except Exception:
-            pass
-
-        # Also try the regional chart URL directly
-        try:
-            await page.goto(
-                'https://app2.msci.com/webapp/indexperf/pages/IEIPerformanceRegional.jsf',
-                wait_until='networkidle', timeout=45000
-            )
+            print("[MSCI] Navigating to index-data-search...")
+            await page.goto('https://app2.msci.com/products/index-data-search/',
+                            wait_until='networkidle', timeout=60000)
             await page.wait_for_timeout(8000)
         except Exception as e:
-            print(f"[MSCI] regional page nav failed: {e}", file=sys.stderr)
+            print(f"[MSCI] navigation timeout: {e}", file=sys.stderr)
 
-        # Try to extract rendered table data from DOM as a last resort
-        dom_table = None
+        # Try to interact with the country tab + search
+        for selector in ['text=Country', 'a:has-text("Country")', 'button:has-text("Search")',
+                         'input[type=submit][value*="Search" i]', 'button:has-text("Update")']:
+            try:
+                elem = page.locator(selector).first
+                if await elem.count() > 0:
+                    await elem.click(timeout=3000)
+                    await page.wait_for_timeout(3000)
+                    print(f"[MSCI] clicked: {selector}")
+            except Exception:
+                pass
+
+        # Also try the legacy regional page
         try:
-            dom_table = await page.evaluate('''() => {
+            await page.goto('https://app2.msci.com/webapp/indexperf/pages/IEIPerformanceRegional.jsf',
+                            wait_until='networkidle', timeout=45000)
+            await page.wait_for_timeout(8000)
+        except Exception:
+            pass
+
+        # Extract all DOM tables with their full row structure for debugging
+        dom_tables = await page.evaluate('''() => {
+            const out = [];
+            document.querySelectorAll('table').forEach((table, ti) => {
                 const rows = [];
-                document.querySelectorAll('table tr').forEach(tr => {
-                    const cells = Array.from(tr.querySelectorAll('td, th')).map(c => c.innerText.trim());
-                    if (cells.length >= 4) rows.push(cells);
+                table.querySelectorAll('tr').forEach((tr, ri) => {
+                    const cells = Array.from(tr.querySelectorAll('th,td')).map(c => c.innerText.trim());
+                    if (cells.length > 0) rows.push(cells);
                 });
-                return rows;
-            }''')
-            print(f"[MSCI] DOM table rows: {len(dom_table) if dom_table else 0}")
-        except Exception as e:
-            print(f"[MSCI] DOM extract failed: {e}", file=sys.stderr)
+                if (rows.length > 0) out.push({ tableIndex: ti, rows });
+            });
+            return out;
+        }''')
 
         await browser.close()
 
-    # Parse captured responses
-    print(f"[MSCI] Total captured responses: {len(captured_responses)}")
-    parsed = parse_msci_responses(captured_responses, dom_table)
-    return parsed
+    # ---- Debug logging: show what we actually got ----
+    print(f"\n[MSCI] === DEBUG: DOM TABLE STRUCTURE ===")
+    print(f"[MSCI] Found {len(dom_tables)} tables")
+    for i, t in enumerate(dom_tables):
+        print(f"[MSCI] Table {i}: {len(t['rows'])} rows")
+        for j, row in enumerate(t['rows'][:3]):
+            row_str = ' | '.join(str(c)[:25] for c in row[:8])
+            print(f"[MSCI]   row {j}: {row_str}")
+        if len(t['rows']) > 3:
+            print(f"[MSCI]   ... + {len(t['rows']) - 3} more rows")
+
+    print(f"\n[MSCI] === DEBUG: JSON RESPONSES ({len(captured_json)}) ===")
+    for jr in captured_json[:5]:
+        snippet = jr['body'][:300].replace('\n', ' ')
+        print(f"[MSCI] {jr['url'][:80]}: {snippet}")
+
+    return parse_msci(dom_tables, captured_json, captured_responses)
 
 
-def parse_msci_responses(responses, dom_table=None):
-    """
-    Walk through captured response bodies looking for performance data.
-    MSCI's responses are typically XML or partial-HTML (JSF Ajax responses).
-    We look for country names + numeric values nearby.
-    """
+def parse_msci(dom_tables, captured_json, captured_responses):
+    """Try multiple parsing strategies in order of reliability."""
     results = {}
-
-    # First try DOM-extracted table
-    if dom_table:
-        results.update(parse_dom_table(dom_table))
-        if results:
-            print(f"[MSCI] DOM table yielded {len(results)} markets")
-
-    # Then walk XHR bodies for any additional/missing countries
     country_aliases = build_country_aliases()
-    for resp in responses:
-        body = resp['body']
-        # Look for country-name patterns followed by numeric values
-        for alias, canonical in country_aliases.items():
-            if canonical in results:
+
+    # ---- Strategy 1: DOM tables (flexible name search across first 3 cells) ----
+    for tbl in dom_tables:
+        for row in tbl['rows']:
+            if len(row) < 5:
                 continue
-            # Match: country name then up to 4 numeric values
-            pattern = re.escape(alias) + r'[^\d\-\+]{0,40}([\-\+]?\d+\.\d+)[^\d\-\+]{1,40}([\-\+]?\d+\.\d+)[^\d\-\+]{1,40}([\-\+]?\d+\.\d+)[^\d\-\+]{1,40}([\-\+]?\d+\.\d+)'
-            m = re.search(pattern, body, re.IGNORECASE)
-            if m:
-                try:
-                    vals = [float(x) for x in m.groups()]
-                    # Heuristic: 1D values should be small (-5 to 5), 1Y can be big
-                    if abs(vals[0]) < 15:
-                        results[canonical] = {
-                            'day':   vals[0],
-                            'mtd':   vals[1],
-                            'ytd':   vals[2],
-                            'oneYr': vals[3],
-                        }
-                except Exception:
-                    pass
+            canonical = None
+            for cell in row[:3]:
+                key = cell.strip().upper()
+                key = re.sub(r'^MSCI\s+', '', key)
+                key = re.sub(r'\s+INDEX$', '', key)
+                key = key.strip()
+                if key in country_aliases:
+                    canonical = country_aliases[key]
+                    break
+            if not canonical or canonical in results:
+                continue
+
+            nums = []
+            for cell in row:
+                cleaned = cell.replace(',', '').replace('%', '').replace('+', '').strip()
+                if re.match(r'^-?\d+\.?\d*$', cleaned):
+                    try:
+                        nums.append(float(cleaned))
+                    except ValueError:
+                        pass
+
+            if len(nums) >= 4:
+                results[canonical] = {
+                    'day':   nums[0],
+                    'mtd':   nums[1],
+                    'ytd':   nums[2] if len(nums) >= 3 else None,
+                    'oneYr': nums[3] if len(nums) >= 4 else None,
+                }
+
+    if results:
+        print(f"[MSCI] DOM strategy yielded {len(results)} markets")
+
+    # ---- Strategy 2: JSON responses ----
+    for jr in captured_json:
+        try:
+            data = json.loads(jr['body'])
+            extracted = extract_from_json(data, country_aliases)
+            for k, v in extracted.items():
+                if k not in results:
+                    results[k] = v
+        except Exception:
+            pass
 
     return results
 
 
-def parse_dom_table(rows):
-    """Extract country -> returns from a rendered HTML table."""
-    out = {}
-    country_aliases = build_country_aliases()
-    num_re = re.compile(r'^-?\d+\.?\d*$')
+def extract_from_json(obj, country_aliases, results=None):
+    """Walk a JSON structure looking for country name + return fields."""
+    if results is None:
+        results = {}
 
-    for row in rows:
-        if not row:
-            continue
-        first = row[0].strip()
-        canonical = country_aliases.get(first.upper())
-        if not canonical:
-            # Try fuzzy match against country names
-            for alias, c in country_aliases.items():
-                if first.upper() == alias or first.upper().startswith(alias):
-                    canonical = c
+    def walk(node):
+        if isinstance(node, dict):
+            name_field = None
+            for key in ('country', 'name', 'indexName', 'label', 'displayName'):
+                if key in node and isinstance(node[key], str):
+                    name_field = node[key]
                     break
-        if not canonical:
-            continue
+            if name_field:
+                key = re.sub(r'^MSCI\s+', '', name_field.strip().upper())
+                key = re.sub(r'\s+INDEX$', '', key).strip()
+                canonical = country_aliases.get(key)
+                if canonical and canonical not in results:
+                    day = mtd = ytd = oneyr = None
+                    for k, v in node.items():
+                        if not isinstance(v, (int, float)):
+                            continue
+                        lk = k.lower()
+                        if '1d' in lk or 'day' in lk: day = float(v)
+                        elif 'mtd' in lk: mtd = float(v)
+                        elif 'ytd' in lk: ytd = float(v)
+                        elif '1y' in lk or '1yr' in lk or '12m' in lk or 'oneyear' in lk:
+                            oneyr = float(v)
+                    if any(x is not None for x in (day, mtd, ytd, oneyr)):
+                        results[canonical] = {'day': day, 'mtd': mtd, 'ytd': ytd, 'oneYr': oneyr}
+            for v in node.values():
+                walk(v)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item)
 
-        # Extract numeric cells
-        numerics = []
-        for cell in row[1:]:
-            cleaned = cell.replace(',', '').replace('%', '').strip()
-            if num_re.match(cleaned):
-                numerics.append(float(cleaned))
-
-        if len(numerics) >= 4:
-            out[canonical] = {
-                'day':   numerics[0],
-                'mtd':   numerics[1],
-                'ytd':   numerics[2] if len(numerics) >= 3 else None,
-                'oneYr': numerics[3] if len(numerics) >= 4 else None,
-            }
-    return out
+    walk(obj)
+    return results
 
 
 def build_country_aliases():
-    """Map various spellings/casings to our canonical country name."""
-    aliases = {}
+    a = {}
     for canon in MARKETS:
-        aliases[canon.upper()] = canon
-    # Common alternate spellings
-    aliases['UNITED STATES'] = 'USA'
-    aliases['US'] = 'USA'
-    aliases['UNITED ARAB EMIRATES'] = 'UAE'
-    aliases['KOREA, REPUBLIC OF'] = 'Korea'
-    aliases['SOUTH KOREA'] = 'Korea'
-    aliases['CZECH REPUBLIC'] = None  # not in our set
-    return {k: v for k, v in aliases.items() if v}
+        a[canon.upper()] = canon
+    a['UNITED STATES'] = 'USA'
+    a['US'] = 'USA'
+    a['UNITED ARAB EMIRATES'] = 'UAE'
+    a['KOREA, REPUBLIC OF'] = 'Korea'
+    a['SOUTH KOREA'] = 'Korea'
+    a['REPUBLIC OF KOREA'] = 'Korea'
+    a['CHINESE TAIPEI'] = 'Taiwan'
+    a['UK'] = 'United Kingdom'
+    a['GREAT BRITAIN'] = 'United Kingdom'
+    return a
 
 
 # =========================================================================
-# FALLBACK PATH: ETF proxies via Stooq
+# FALLBACK: yfinance country-ETF proxies
 # =========================================================================
 def fetch_etf_returns():
-    """
-    Fetch daily-resolution price history from Stooq for each country ETF and
-    compute 1D / MTD / YTD / 1Y returns. Stooq is free, returns CSV, and is
-    CORS-friendly (but we're running server-side anyway).
-    """
-    import requests
-    print("[ETF] Fetching country ETF prices from Stooq...")
+    """Fetch ETF history via yfinance and compute returns."""
+    import yfinance as yf
 
-    today = datetime.now(timezone.utc).date()
-    start = today - timedelta(days=400)
+    print("\n[ETF] Fetching country ETF prices from Yahoo Finance...")
+    tickers = [m['etf'] for m in MARKETS.values()]
+    ticker_to_country = {m['etf']: c for c, m in MARKETS.items()}
+
+    try:
+        df = yf.download(tickers, period='14mo', interval='1d',
+                         progress=False, group_by='ticker', auto_adjust=True,
+                         threads=True)
+    except Exception as e:
+        print(f"[ETF] yfinance batch download failed: {e}", file=sys.stderr)
+        return {}
+
     results = {}
 
-    session = requests.Session()
-    session.headers.update({
-        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) Chrome/121.0.0.0 Safari/537.36'
-    })
-
-    for country, meta in MARKETS.items():
-        ticker = meta['etf']
-        url = f"https://stooq.com/q/d/l/?s={ticker}&i=d&d1={start:%Y%m%d}&d2={today:%Y%m%d}"
+    for ticker in tickers:
+        country = ticker_to_country[ticker]
         try:
-            r = session.get(url, timeout=20)
-            if r.status_code != 200 or 'No data' in r.text[:200]:
-                print(f"[ETF] {country}: no data from {ticker}", file=sys.stderr)
+            if len(tickers) == 1:
+                sub = df
+            else:
+                sub = df[ticker]
+
+            closes = sub['Close'].dropna()
+            if len(closes) < 30:
+                print(f"[ETF] {country:18s} {ticker:6s} only {len(closes)} closes — skip", file=sys.stderr)
                 continue
 
-            lines = [l for l in r.text.strip().splitlines() if l]
-            if len(lines) < 5:
-                continue
+            closes = closes.sort_index()
+            last_date = closes.index[-1].date()
+            last_close = float(closes.iloc[-1])
+            prev_close = float(closes.iloc[-2])
 
-            # CSV: Date,Open,High,Low,Close,Volume
-            rows = []
-            for line in lines[1:]:  # skip header
-                parts = line.split(',')
-                if len(parts) >= 5:
-                    try:
-                        rows.append({
-                            'date': datetime.strptime(parts[0], '%Y-%m-%d').date(),
-                            'close': float(parts[4]),
-                        })
-                    except ValueError:
-                        pass
+            this_month_start = last_date.replace(day=1)
+            prev_month_closes = closes[closes.index.date < this_month_start]
+            month_anchor = float(prev_month_closes.iloc[-1]) if len(prev_month_closes) else float(closes.iloc[0])
 
-            if len(rows) < 2:
-                continue
+            this_year_start = last_date.replace(month=1, day=1)
+            prev_year_closes = closes[closes.index.date < this_year_start]
+            year_anchor = float(prev_year_closes.iloc[-1]) if len(prev_year_closes) else float(closes.iloc[0])
 
-            rows.sort(key=lambda x: x['date'])
-            last = rows[-1]
-            prev_day = rows[-2]
-
-            # Find end-of-previous-month close
-            this_month = last['date'].replace(day=1)
-            prev_month_rows = [r for r in rows if r['date'] < this_month]
-            month_anchor = prev_month_rows[-1] if prev_month_rows else rows[0]
-
-            # Find end-of-previous-year close
-            this_year_start = last['date'].replace(month=1, day=1)
-            prev_year_rows = [r for r in rows if r['date'] < this_year_start]
-            year_anchor = prev_year_rows[-1] if prev_year_rows else rows[0]
-
-            # Find ~1Y ago close (closest to 365 days back)
-            target = last['date'] - timedelta(days=365)
-            one_yr_anchor = min(rows, key=lambda r: abs((r['date'] - target).days))
+            target = last_date - timedelta(days=365)
+            one_yr_anchor = min(
+                [(abs((d.date() - target).days), float(closes.loc[d])) for d in closes.index],
+                key=lambda x: x[0]
+            )[1]
 
             results[country] = {
-                'day':   round((last['close'] / prev_day['close'] - 1) * 100, 2),
-                'mtd':   round((last['close'] / month_anchor['close'] - 1) * 100, 2),
-                'ytd':   round((last['close'] / year_anchor['close'] - 1) * 100, 2),
-                'oneYr': round((last['close'] / one_yr_anchor['close'] - 1) * 100, 2),
-                '_as_of': last['date'].isoformat(),
+                'day':   round((last_close / prev_close - 1) * 100, 2),
+                'mtd':   round((last_close / month_anchor - 1) * 100, 2),
+                'ytd':   round((last_close / year_anchor - 1) * 100, 2),
+                'oneYr': round((last_close / one_yr_anchor - 1) * 100, 2),
+                '_as_of': last_date.isoformat(),
             }
-            print(f"[ETF] {country:18s} {ticker:9s} 1D={results[country]['day']:+6.2f}  "
-                  f"MTD={results[country]['mtd']:+6.2f}  YTD={results[country]['ytd']:+7.2f}  "
-                  f"1Y={results[country]['oneYr']:+7.2f}")
+            r = results[country]
+            print(f"[ETF] {country:18s} {ticker:6s} 1D={r['day']:+6.2f}  "
+                  f"MTD={r['mtd']:+6.2f}  YTD={r['ytd']:+7.2f}  1Y={r['oneYr']:+7.2f}")
 
         except Exception as e:
-            print(f"[ETF] {country}: {e}", file=sys.stderr)
+            print(f"[ETF] {country:18s} {ticker:6s}  ERROR: {e}", file=sys.stderr)
 
     return results
 
@@ -375,7 +366,6 @@ def fetch_etf_returns():
 # ORCHESTRATION
 # =========================================================================
 def build_output(market_data, source, as_of=None):
-    """Build the final JSON payload."""
     markets = []
     for country, meta in MARKETS.items():
         if country in market_data:
@@ -389,7 +379,6 @@ def build_output(market_data, source, as_of=None):
                 'region': meta['region'],
                 'type':   meta['type'],
             })
-
     return {
         'lastUpdated': datetime.now(timezone.utc).isoformat(timespec='seconds'),
         'source': source,
@@ -420,32 +409,31 @@ async def main():
     except Exception as e:
         print(f"[MSCI] scrape exception: {e}", file=sys.stderr)
 
-    # Require at least 30 of 44 markets from MSCI to consider it a success
     if len(msci_data) >= 30:
-        print(f"[OK] MSCI scrape captured {len(msci_data)}/{len(MARKETS)} markets — using as source")
+        print(f"\n[OK] MSCI captured {len(msci_data)}/{len(MARKETS)} — using MSCI as source")
         output = build_output(msci_data, source='MSCI')
     else:
-        print(f"[WARN] MSCI scrape only captured {len(msci_data)} markets — falling back to ETF proxies")
+        print(f"\n[WARN] MSCI only captured {len(msci_data)} markets — falling back to yfinance")
         try:
             etf_data = fetch_etf_returns()
             if len(etf_data) >= 30:
+                print(f"\n[OK] yfinance captured {len(etf_data)}/{len(MARKETS)} markets")
                 output = build_output(etf_data, source='ETF_PROXY')
             else:
-                print(f"[ERR] ETF fallback only got {len(etf_data)} — keeping previous data", file=sys.stderr)
-                if previous:
-                    print("[OK] previous data retained")
-                    return 1
-                else:
-                    print("[ERR] no previous data either, writing empty file", file=sys.stderr)
-                    output = build_output({}, source='FAILED')
+                print(f"\n[ERR] yfinance only got {len(etf_data)} markets", file=sys.stderr)
+                if previous and previous.get('markets'):
+                    print("[OK] keeping previous data file")
+                    return 0
+                output = build_output(etf_data, source='ETF_PROXY' if etf_data else 'FAILED')
         except Exception as e:
-            print(f"[ERR] ETF fallback exception: {e}", file=sys.stderr)
-            if previous:
-                return 1
+            print(f"[ERR] yfinance exception: {e}", file=sys.stderr)
+            if previous and previous.get('markets'):
+                return 0
             output = build_output({}, source='FAILED')
 
     out_path.write_text(json.dumps(output, indent=2))
-    print(f"[OK] wrote {out_path} ({output['marketsCount']} markets, source={output['source']})")
+    print(f"\n[OK] wrote {out_path}")
+    print(f"      {output['marketsCount']} markets, source={output['source']}")
     return 0
 
 
