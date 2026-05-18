@@ -967,6 +967,82 @@
     justify-content: space-between;
   }
 
+  /* ==================== TOAST ==================== */
+  .toast {
+    position: fixed;
+    bottom: 32px;
+    right: 32px;
+    z-index: 2000;
+    background: var(--bg-1);
+    border: 1px solid var(--line-2);
+    border-left: 2px solid var(--accent);
+    padding: 14px 20px 14px 18px;
+    min-width: 260px;
+    max-width: 380px;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transform: translateY(12px);
+    pointer-events: none;
+    transition: opacity 0.35s var(--ease-out), transform 0.35s var(--ease-out);
+  }
+  .toast.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .toast.error {
+    border-left-color: var(--neg);
+  }
+  .toast .toast-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    margin-bottom: 4px;
+  }
+  .toast.error .toast-label {
+    color: var(--neg);
+  }
+  .toast .toast-message {
+    font-family: var(--font-body);
+    font-size: 13px;
+    color: var(--ink-0);
+    line-height: 1.4;
+  }
+  .toast .toast-sub {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-2);
+    margin-top: 6px;
+    letter-spacing: 0.04em;
+  }
+
+  /* ==================== ACTION LINK ==================== */
+  .link-action {
+    color: var(--ink-2);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    text-decoration: none;
+    padding: 4px 0;
+    transition: color 0.15s var(--ease-out), letter-spacing 0.15s var(--ease-out);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 2px;
+  }
+  .link-action:hover {
+    color: var(--accent);
+    letter-spacing: 0.18em;
+  }
+  .link-action .arrow {
+    transition: transform 0.2s var(--ease-out);
+  }
+  .link-action:hover .arrow {
+    transform: translate(2px, -2px);
+  }
+
   /* ==================== RESPONSIVE ==================== */
   @media (max-width: 1100px) {
     .summary-grid { grid-template-columns: repeat(2, 1fr); }
@@ -1015,6 +1091,10 @@
         <span class="spinner-icon"></span>
         <span class="btn-label">Refresh Data</span>
       </button>
+      <a class="link-action" id="triggerScrapeLink" target="_blank" rel="noopener" title="Opens GitHub Actions to manually trigger a new MSCI scrape">
+        Trigger new MSCI scrape
+        <span class="arrow">↗</span>
+      </a>
     </div>
   </header>
 
@@ -1222,6 +1302,8 @@
   </footer>
 </div>
 
+<div class="toast" id="toast"></div>
+
 <script>
 /* ============================================================
    MSCI WORLD MARKETS DASHBOARD — v7
@@ -1383,6 +1465,33 @@ function fmtTimestamp(ts) {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit'
   });
+}
+
+function formatAge(timestamp) {
+  if (!timestamp) return 'age unknown';
+  const ms = Date.now() - new Date(timestamp).getTime();
+  if (ms < 0) return 'just now';
+  const minutes = Math.floor(ms / 60000);
+  if (minutes < 1) return 'less than a minute ago';
+  if (minutes < 60) return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'} ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} ${days === 1 ? 'day' : 'days'} ago`;
+}
+
+function showToast({ label = 'Refreshed', message = '', sub = '', error = false, duration = 4200 }) {
+  const toast = document.getElementById('toast');
+  if (!toast) return;
+  toast.innerHTML = `
+    <div class="toast-label">${label}</div>
+    <div class="toast-message">${message}</div>
+    ${sub ? `<div class="toast-sub">${sub}</div>` : ''}
+  `;
+  toast.classList.toggle('error', !!error);
+  toast.classList.add('visible');
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => toast.classList.remove('visible'), duration);
 }
 
 /* Tween any DOM element's text content from one number to another */
@@ -2036,6 +2145,7 @@ function renderDataSourceBanner(meta) {
 // ============================================================
 async function loadAndRender({ force = false } = {}) {
   const btn = document.getElementById('refreshBtn');
+  const previousUpdate = state.lastSeenUpdate;
   btn.classList.add('loading');
   btn.disabled = true;
   try {
@@ -2053,6 +2163,7 @@ async function loadAndRender({ force = false } = {}) {
     }
     state.data = payload.markets;
     const meta = payload.meta || {};
+    state.lastSeenUpdate = meta.lastUpdated;
 
     const asOfTs = meta.lastUpdated ? new Date(meta.lastUpdated).getTime() : ts;
     document.getElementById('lastUpdated').textContent = fmtTimestamp(asOfTs);
@@ -2067,6 +2178,25 @@ async function loadAndRender({ force = false } = {}) {
     applyFilters();
     setTimeout(() => { hideLoader(); triggerScrollReveal(); }, 250);
 
+    // Toast feedback on manual Refresh
+    if (force) {
+      const newUpdate = meta.lastUpdated;
+      const dataChanged = newUpdate && previousUpdate && newUpdate !== previousUpdate;
+      if (dataChanged) {
+        showToast({
+          label: 'Fresh data',
+          message: 'A new MSCI scrape has been loaded.',
+          sub: `MSCI scrape ${formatAge(newUpdate)}`
+        });
+      } else {
+        showToast({
+          label: 'Refreshed',
+          message: 'No new scrape since last fetch.',
+          sub: `MSCI data ${formatAge(newUpdate)} · trigger a new scrape from Actions ↗`
+        });
+      }
+    }
+
   } catch (e) {
     console.error(e);
     showError(
@@ -2074,6 +2204,15 @@ async function loadAndRender({ force = false } = {}) {
       `Check that CONFIG.githubUser/githubRepo are set correctly and the repo is public.`
     );
     hideLoader();
+    if (force) {
+      showToast({
+        label: 'Refresh failed',
+        message: 'Could not fetch data from GitHub.',
+        sub: e.message,
+        error: true,
+        duration: 6500
+      });
+    }
   } finally {
     btn.classList.remove('loading');
     btn.disabled = false;
@@ -2169,6 +2308,12 @@ function wireEvents() {
 // BOOT
 // ============================================================
 (async function init() {
+  // Wire up the "Trigger new scrape" link to the right Actions workflow URL
+  const triggerLink = document.getElementById('triggerScrapeLink');
+  if (triggerLink) {
+    triggerLink.href = `https://github.com/${CONFIG.githubUser}/${CONFIG.githubRepo}/actions/workflows/scrape-msci.yml`;
+  }
+
   wireEvents();
   setupScrollReveal();
   setLoadingStatus('Initialising map…');
