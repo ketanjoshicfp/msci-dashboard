@@ -1,0 +1,76 @@
+name: Scrape MSCI daily
+
+on:
+  schedule:
+    # 23:00 UTC every weekday (after US market close).
+    # MSCI publishes EOD around 18:30 EDT (~22:30/23:30 UTC depending on DST).
+    - cron: '0 23 * * 1-5'
+  workflow_dispatch: {}   # allow manual trigger from the Actions tab
+
+permissions:
+  contents: write   # needed for the bot to commit the updated JSON
+
+concurrency:
+  group: scrape-msci
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: scripts/requirements.txt
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r scripts/requirements.txt
+
+      - name: Install Playwright browser
+        run: python -m playwright install --with-deps chromium
+
+      - name: Run scraper
+        id: scrape
+        run: |
+          python scripts/scrape_msci.py
+        continue-on-error: true
+
+      - name: Show output
+        if: always()
+        run: |
+          if [ -f data/msci-data.json ]; then
+            echo "--- data/msci-data.json (first 60 lines) ---"
+            head -n 60 data/msci-data.json
+            echo "..."
+            echo "marketsCount: $(jq .marketsCount data/msci-data.json)"
+            echo "source:       $(jq -r .source data/msci-data.json)"
+          else
+            echo "No data file produced."
+          fi
+
+      - name: Commit updated data
+        if: success() || steps.scrape.outcome == 'success'
+        run: |
+          if [ ! -f data/msci-data.json ]; then
+            echo "No data file to commit"; exit 0
+          fi
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add data/msci-data.json
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            STAMP=$(date -u +'%Y-%m-%d %H:%M UTC')
+            SRC=$(jq -r .source data/msci-data.json)
+            CNT=$(jq -r .marketsCount data/msci-data.json)
+            git commit -m "data: MSCI refresh $STAMP — $SRC — $CNT markets"
+            git push
+          fi
