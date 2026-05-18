@@ -1037,7 +1037,8 @@ async function fetchMarketData() {
       source:      payload.source,
       asOf:        payload.asOf,
       marketsCount: payload.marketsCount,
-      expectedCount: payload.expectedCount
+      expectedCount: payload.expectedCount,
+      validation:  payload.validation || null
     }
   };
 }
@@ -1549,7 +1550,18 @@ function renderDataSourceBanner(meta) {
     'PLACEHOLDER': `Placeholder data — your GitHub Action hasn't run yet. Trigger it manually from the Actions tab of your repo.`,
     'FAILED':      `Last scrape failed — showing nothing. Check the Actions tab for the error log.`,
   }[source] || `Source: ${source} (as of ${asOf})`;
-  label.innerHTML = sourceText;
+
+  // Append validation summary if present
+  let extra = '';
+  const v = meta.validation;
+  if (v && typeof v.compared === 'number' && v.compared > 0) {
+    const colour = v.discrepancyCount === 0 ? 'var(--pos)' : 'var(--accent)';
+    extra = `<br><span style="color: var(--ink-2); font-size: 11px;">Cross-source validation: ` +
+            `${v.compared} countries compared against ETF proxy, ` +
+            `<strong style="color: ${colour}">${v.discrepancyCount}</strong> ` +
+            `with discrepancies of ≥${v.threshold}%</span>`;
+  }
+  label.innerHTML = sourceText + extra;
 }
 
 // ---------- EVENT WIRING ----------
