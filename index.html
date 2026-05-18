@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>MSCI World Markets &middot; Performance Dashboard</title>
+<title>MSCI World Markets · Performance Terminal</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600;9..144,700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400;9..144,500;9..144,600&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
@@ -18,6 +18,7 @@
     --bg-1: #11151d;
     --bg-2: #161b25;
     --bg-3: #1c2230;
+    --bg-4: #232a38;
     --line: #232a38;
     --line-2: #2d3548;
     --ink-0: #f4f1ea;
@@ -25,16 +26,20 @@
     --ink-2: #8a8676;
     --ink-3: #5a5749;
     --accent: #c9a96e;
+    --accent-bright: #d9bb80;
     --accent-dim: #8e7651;
     --pos: #4ade80;
-    --pos-deep: #16a34a;
+    --pos-deep: #15803d;
+    --pos-bright: #86efac;
     --neg: #f87171;
-    --neg-deep: #dc2626;
-    --neutral: #6b7280;
-    --shadow-soft: 0 1px 0 rgba(255,255,255,0.04) inset, 0 8px 24px rgba(0,0,0,0.25);
+    --neg-deep: #7f1d1d;
+    --neg-bright: #fca5a5;
+    --neutral: #374151;
     --font-display: 'Fraunces', 'Iowan Old Style', 'Georgia', serif;
     --font-body: 'Inter', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -53,6 +58,7 @@
     background-image:
       radial-gradient(ellipse 800px 400px at 10% -10%, rgba(201,169,110,0.06), transparent 60%),
       radial-gradient(ellipse 600px 300px at 90% 10%, rgba(74,222,128,0.03), transparent 60%);
+    overflow-x: hidden;
   }
 
   .container {
@@ -61,7 +67,7 @@
     padding: 32px 40px 80px;
   }
 
-  /* ---------- HEADER ---------- */
+  /* ==================== HEADER ==================== */
   header.masthead {
     display: grid;
     grid-template-columns: 1fr auto;
@@ -69,7 +75,7 @@
     gap: 24px;
     padding-bottom: 28px;
     border-bottom: 1px solid var(--line);
-    margin-bottom: 36px;
+    margin-bottom: 28px;
   }
 
   .brand-line {
@@ -97,7 +103,7 @@
   h1.title {
     font-family: var(--font-display);
     font-weight: 400;
-    font-size: clamp(36px, 5vw, 64px);
+    font-size: clamp(36px, 5vw, 60px);
     line-height: 0.98;
     letter-spacing: -0.02em;
     color: var(--ink-0);
@@ -127,7 +133,6 @@
     font-family: var(--font-mono);
     font-size: 11px;
     color: var(--ink-2);
-    letter-spacing: 0.05em;
   }
   .timestamp-block .label {
     color: var(--ink-3);
@@ -152,12 +157,12 @@
     border-radius: 2px;
     cursor: pointer;
     letter-spacing: 0.02em;
-    transition: all 0.2s ease;
+    transition: all 0.2s var(--ease-out);
     display: inline-flex;
     align-items: center;
     gap: 8px;
   }
-  button.btn:hover { background: #d9bb80; transform: translateY(-1px); }
+  button.btn:hover { background: var(--accent-bright); transform: translateY(-1px); }
   button.btn:active { transform: translateY(0); }
   button.btn:disabled { opacity: 0.5; cursor: wait; }
   button.btn .spinner-icon {
@@ -173,71 +178,40 @@
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* ---------- SUMMARY CARDS ---------- */
-  .summary-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 1px;
-    background: var(--line);
-    border: 1px solid var(--line);
-    margin-bottom: 36px;
-  }
-  .summary-card {
-    background: var(--bg-1);
-    padding: 24px 28px;
-    position: relative;
-    overflow: hidden;
-  }
-  .summary-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0;
-    width: 2px; height: 100%;
-    background: var(--accent);
-    transform: scaleY(0);
-    transform-origin: top;
-    transition: transform 0.4s ease;
-  }
-  .summary-card:hover::before { transform: scaleY(1); }
-  .summary-label {
-    font-family: var(--font-mono);
-    font-size: 10px;
-    color: var(--ink-3);
-    text-transform: uppercase;
-    letter-spacing: 0.18em;
-    margin-bottom: 16px;
-  }
-  .summary-value {
-    font-family: var(--font-display);
-    font-size: 38px;
-    font-weight: 400;
-    line-height: 1;
-    letter-spacing: -0.02em;
-    color: var(--ink-0);
-    margin-bottom: 6px;
-  }
-  .summary-value.pos { color: var(--pos); }
-  .summary-value.neg { color: var(--neg); }
-  .summary-meta {
-    font-size: 12px;
-    color: var(--ink-2);
-  }
-  .summary-meta strong {
+  /* ==================== INFO BANNER ==================== */
+  .info-banner {
+    background: rgba(201, 169, 110, 0.06);
+    border-left: 2px solid var(--accent);
     color: var(--ink-1);
-    font-weight: 500;
+    padding: 14px 18px;
+    margin-bottom: 24px;
+    font-size: 12px;
+    transition: opacity 0.4s var(--ease-out);
   }
+  .info-banner strong { color: var(--accent); font-weight: 500; }
 
-  /* ---------- FILTER BAR ---------- */
+  .error-banner {
+    background: rgba(248, 113, 113, 0.08);
+    border: 1px solid rgba(248, 113, 113, 0.3);
+    color: var(--neg);
+    padding: 16px 20px;
+    margin-bottom: 24px;
+    font-size: 13px;
+    display: none;
+  }
+  .error-banner.visible { display: block; }
+  .error-banner strong { color: var(--neg-bright); }
+
+  /* ==================== FILTER BAR ==================== */
   .filter-bar {
     display: grid;
-    grid-template-columns: 1.6fr 1fr 1fr 1.2fr;
+    grid-template-columns: 1.4fr 1.4fr 1fr 1.2fr;
     gap: 12px;
-    margin-bottom: 28px;
-    padding: 18px;
+    margin-bottom: 18px;
+    padding: 16px 18px;
     background: var(--bg-1);
     border: 1px solid var(--line);
   }
-
   .filter-group {
     display: flex;
     flex-direction: column;
@@ -250,9 +224,7 @@
     text-transform: uppercase;
     letter-spacing: 0.14em;
   }
-
-  .filter-group input[type="text"],
-  .filter-group select {
+  .filter-group input[type="text"] {
     background: var(--bg-2);
     border: 1px solid var(--line-2);
     color: var(--ink-0);
@@ -261,42 +233,45 @@
     font-size: 13px;
     border-radius: 2px;
     outline: none;
-    transition: border-color 0.2s;
+    transition: border-color 0.2s, background 0.2s;
   }
-  .filter-group input[type="text"]:focus,
-  .filter-group select:focus { border-color: var(--accent); }
-  .filter-group select {
-    cursor: pointer;
-    appearance: none;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M1 1L5 5L9 1' stroke='%238a8676' stroke-width='1.5' fill='none'/></svg>");
-    background-repeat: no-repeat;
-    background-position: right 12px center;
-    padding-right: 32px;
+  .filter-group input[type="text"]:focus {
+    border-color: var(--accent);
+    background: var(--bg-3);
   }
 
-  .market-toggle {
+  /* ---- Chip-style segmented controls ---- */
+  .chip-row {
     display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    height: 37px;
+    align-items: center;
+  }
+  .chip {
     background: var(--bg-2);
     border: 1px solid var(--line-2);
-    border-radius: 2px;
-    padding: 2px;
-    height: 37px;
-  }
-  .market-toggle button {
-    flex: 1;
-    background: transparent;
-    border: none;
     color: var(--ink-2);
+    padding: 7px 12px;
     font-family: var(--font-body);
-    font-size: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
     cursor: pointer;
-    transition: all 0.15s;
     border-radius: 2px;
+    transition: all 0.15s var(--ease-out);
+    white-space: nowrap;
   }
-  .market-toggle button.active {
+  .chip:hover {
+    background: var(--bg-3);
+    color: var(--ink-1);
+    border-color: var(--ink-3);
+  }
+  .chip.active {
     background: var(--accent);
     color: var(--bg-0);
-    font-weight: 500;
+    border-color: var(--accent);
+    font-weight: 600;
   }
 
   .perf-range-display {
@@ -316,19 +291,184 @@
     accent-color: var(--accent);
   }
 
-  /* ---------- SECTION HEADERS ---------- */
+  /* ==================== GLOBAL METRIC SELECTOR ==================== */
+  .metric-bar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+    padding: 14px 18px;
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+  }
+  .metric-bar .metric-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    margin-right: 4px;
+  }
+  .metric-toggle {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 2px;
+    background: var(--bg-2);
+    border: 1px solid var(--line-2);
+    border-radius: 2px;
+    padding: 2px;
+  }
+  .metric-toggle button {
+    background: transparent;
+    border: none;
+    color: var(--ink-2);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    padding: 8px 14px;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.15s var(--ease-out);
+  }
+  .metric-toggle button:hover {
+    color: var(--ink-0);
+    background: var(--bg-3);
+  }
+  .metric-toggle button.active {
+    background: var(--accent);
+    color: var(--bg-0);
+    font-weight: 600;
+  }
+
+  /* ==================== TAB NAV ==================== */
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 32px;
+    gap: 0;
+  }
+  .tab-btn {
+    background: transparent;
+    border: none;
+    color: var(--ink-2);
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 400;
+    padding: 16px 28px;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.2s var(--ease-out);
+    letter-spacing: -0.01em;
+  }
+  .tab-btn:hover { color: var(--ink-1); }
+  .tab-btn.active { color: var(--ink-0); }
+  .tab-btn::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 28px; right: 28px;
+    height: 2px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform 0.35s var(--ease-out);
+  }
+  .tab-btn.active::after { transform: scaleX(1); }
+
+  .tab-panel {
+    display: none;
+  }
+  .tab-panel.active {
+    display: block;
+    animation: tabFadeIn 0.45s var(--ease-out);
+  }
+  @keyframes tabFadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .tab-panel.active > * {
+    animation: childFadeIn 0.5s var(--ease-out) backwards;
+  }
+  .tab-panel.active > *:nth-child(1) { animation-delay: 0.05s; }
+  .tab-panel.active > *:nth-child(2) { animation-delay: 0.12s; }
+  .tab-panel.active > *:nth-child(3) { animation-delay: 0.19s; }
+  .tab-panel.active > *:nth-child(4) { animation-delay: 0.26s; }
+  @keyframes childFadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ==================== SUMMARY CARDS ==================== */
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    margin-bottom: 32px;
+  }
+  .summary-card {
+    background: var(--bg-1);
+    padding: 22px 26px;
+    position: relative;
+    overflow: hidden;
+    transition: background 0.25s var(--ease-out);
+  }
+  .summary-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 2px; height: 100%;
+    background: var(--accent);
+    transform: scaleY(0);
+    transform-origin: top;
+    transition: transform 0.4s var(--ease-out);
+  }
+  .summary-card:hover { background: var(--bg-2); }
+  .summary-card:hover::before { transform: scaleY(1); }
+  .summary-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    margin-bottom: 14px;
+  }
+  .summary-value {
+    font-family: var(--font-display);
+    font-size: 36px;
+    font-weight: 400;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--ink-0);
+    margin-bottom: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+  .summary-value.pos { color: var(--pos); }
+  .summary-value.neg { color: var(--neg); }
+  .summary-meta {
+    font-size: 12px;
+    color: var(--ink-2);
+  }
+  .summary-meta strong {
+    color: var(--ink-1);
+    font-weight: 500;
+  }
+
+  /* ==================== SECTION HEADERS ==================== */
   .section-header {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
-    margin-bottom: 20px;
+    margin-bottom: 18px;
     padding-bottom: 12px;
     border-bottom: 1px solid var(--line);
   }
   .section-title {
     font-family: var(--font-display);
     font-weight: 400;
-    font-size: 24px;
+    font-size: 22px;
     color: var(--ink-0);
     letter-spacing: -0.01em;
   }
@@ -341,13 +481,13 @@
     letter-spacing: 0.14em;
   }
 
-  /* ---------- MAP ---------- */
-  .map-section { margin-bottom: 48px; }
+  /* ==================== MAP ==================== */
   .map-wrap {
     background: var(--bg-1);
     border: 1px solid var(--line);
     position: relative;
     overflow: hidden;
+    margin-bottom: 32px;
   }
   .map-controls {
     position: absolute;
@@ -365,7 +505,7 @@
     color: var(--ink-1);
     cursor: pointer;
     font-size: 16px;
-    transition: all 0.15s;
+    transition: all 0.15s var(--ease-out);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -378,7 +518,7 @@
 
   #worldMap {
     width: 100%;
-    height: 560px;
+    height: 640px;
     display: block;
     cursor: grab;
   }
@@ -388,13 +528,13 @@
     fill: var(--bg-3);
     stroke: var(--bg-0);
     stroke-width: 0.5;
-    transition: filter 0.15s, stroke 0.15s;
+    transition: filter 0.15s, stroke 0.15s, stroke-width 0.15s;
   }
   .country-path.has-data { cursor: pointer; }
   .country-path:hover {
     filter: brightness(1.4);
     stroke: var(--accent);
-    stroke-width: 1.2;
+    stroke-width: 1.5;
   }
 
   .map-legend {
@@ -418,15 +558,16 @@
     font-size: 9px;
   }
   .legend-bar {
-    width: 220px;
+    width: 240px;
     height: 8px;
-    background: linear-gradient(to right, var(--neg-deep), var(--neg), #404040, var(--pos), var(--pos-deep));
     margin-bottom: 4px;
+    transition: background 0.5s var(--ease-out);
   }
   .legend-labels {
     display: flex;
     justify-content: space-between;
     color: var(--ink-1);
+    font-variant-numeric: tabular-nums;
   }
 
   .tooltip {
@@ -440,9 +581,9 @@
     color: var(--ink-0);
     box-shadow: 0 12px 32px rgba(0,0,0,0.5);
     opacity: 0;
-    transition: opacity 0.15s;
+    transition: opacity 0.15s var(--ease-out);
     z-index: 100;
-    min-width: 180px;
+    min-width: 200px;
   }
   .tooltip.visible { opacity: 1; }
   .tooltip-country {
@@ -473,27 +614,33 @@
   .tooltip-row .val { font-weight: 500; }
   .tooltip-row .val.pos { color: var(--pos); }
   .tooltip-row .val.neg { color: var(--neg); }
+  .tooltip-row .val.muted { color: var(--ink-3); }
 
-  /* ---------- CHART GRID ---------- */
-  .charts-grid {
+  /* ==================== TOP MOVERS ==================== */
+  .movers-grid {
     display: grid;
-    grid-template-columns: 1.6fr 1fr;
+    grid-template-columns: 1fr 1fr;
     gap: 24px;
-    margin-bottom: 48px;
+    margin-bottom: 32px;
   }
-  .chart-card {
+  .movers-card {
     background: var(--bg-1);
     border: 1px solid var(--line);
-    padding: 24px;
+    padding: 20px 24px;
   }
-  .chart-card h3 {
+  .movers-card h3 {
     font-family: var(--font-display);
-    font-weight: 400;
     font-size: 18px;
+    font-weight: 400;
     color: var(--ink-0);
     margin-bottom: 4px;
   }
-  .chart-card .chart-meta {
+  .movers-card h3 em {
+    font-style: italic;
+  }
+  .movers-card h3.gainers em { color: var(--pos); }
+  .movers-card h3.losers em { color: var(--neg); }
+  .movers-card .sub {
     font-family: var(--font-mono);
     font-size: 10px;
     color: var(--ink-3);
@@ -501,39 +648,57 @@
     letter-spacing: 0.14em;
     margin-bottom: 16px;
   }
-  .chart-canvas-wrap {
+  .movers-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .mover-row {
+    display: grid;
+    grid-template-columns: 110px 1fr 80px;
+    align-items: center;
+    gap: 14px;
+    font-size: 13px;
+    transition: background 0.2s var(--ease-out);
+    padding: 4px 8px;
+    margin: 0 -8px;
+    border-radius: 2px;
+  }
+  .mover-row:hover { background: var(--bg-2); }
+  .mover-row .country {
+    color: var(--ink-0);
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mover-row .bar {
+    height: 6px;
+    background: var(--bg-3);
+    border-radius: 3px;
+    overflow: hidden;
     position: relative;
-    height: 400px;
   }
-  .chart-canvas-wrap.tall { height: 460px; }
-
-  .metric-toggle {
-    display: inline-flex;
-    background: var(--bg-2);
-    border: 1px solid var(--line-2);
-    border-radius: 2px;
-    padding: 2px;
-    margin-bottom: 12px;
+  .mover-row .bar .fill {
+    display: block;
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.7s var(--ease-out);
   }
-  .metric-toggle button {
-    background: transparent;
-    border: none;
-    color: var(--ink-2);
+  .mover-row .bar .fill.pos { background: linear-gradient(90deg, var(--pos-deep), var(--pos)); }
+  .mover-row .bar .fill.neg { background: linear-gradient(90deg, var(--neg), var(--neg-deep)); }
+  .mover-row .value {
     font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    padding: 6px 12px;
-    cursor: pointer;
-    border-radius: 2px;
+    font-size: 12px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
   }
-  .metric-toggle button.active {
-    background: var(--accent);
-    color: var(--bg-0);
-  }
+  .mover-row .value.pos { color: var(--pos); }
+  .mover-row .value.neg { color: var(--neg); }
 
-  /* ---------- DATA TABLE ---------- */
-  .table-section { margin-bottom: 40px; }
+  /* ==================== DATA TABLE ==================== */
   .table-wrap {
     background: var(--bg-1);
     border: 1px solid var(--line);
@@ -553,16 +718,20 @@
     text-transform: uppercase;
     letter-spacing: 0.14em;
     text-align: right;
-    padding: 14px 16px;
+    padding: 14px 12px;
     border-bottom: 1px solid var(--line-2);
     cursor: pointer;
     user-select: none;
     white-space: nowrap;
-    transition: color 0.15s;
+    transition: color 0.15s var(--ease-out);
+    position: sticky;
+    top: 0;
+    z-index: 1;
   }
   table.data-table thead th:first-child,
   table.data-table thead th:nth-child(2),
-  table.data-table thead th:nth-child(3) { text-align: left; }
+  table.data-table thead th:nth-child(3),
+  table.data-table thead th:nth-child(4) { text-align: left; }
   table.data-table thead th:hover { color: var(--accent); }
   table.data-table thead th.sorted { color: var(--accent); }
   table.data-table thead th .sort-arrow {
@@ -571,32 +740,54 @@
     opacity: 0.5;
   }
   table.data-table thead th.sorted .sort-arrow { opacity: 1; }
+  table.data-table thead th.metric-active { color: var(--accent); background: var(--bg-3); }
 
   table.data-table tbody td {
-    padding: 13px 16px;
+    padding: 12px;
     border-bottom: 1px solid var(--line);
     text-align: right;
     font-family: var(--font-mono);
     color: var(--ink-1);
     white-space: nowrap;
+    font-variant-numeric: tabular-nums;
   }
   table.data-table tbody td:first-child,
   table.data-table tbody td:nth-child(2),
-  table.data-table tbody td:nth-child(3) { text-align: left; }
+  table.data-table tbody td:nth-child(3),
+  table.data-table tbody td:nth-child(4) { text-align: left; }
   table.data-table tbody td:nth-child(2) {
     font-family: var(--font-display);
     font-size: 15px;
     color: var(--ink-0);
   }
   table.data-table tbody tr {
-    transition: background 0.15s;
+    transition: background 0.15s var(--ease-out), transform 0.15s var(--ease-out);
+    position: relative;
   }
-  table.data-table tbody tr:hover { background: var(--bg-2); }
+  table.data-table tbody tr:hover {
+    background: var(--bg-2);
+  }
+  table.data-table tbody tr::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--accent);
+    transform: scaleY(0);
+    transition: transform 0.2s var(--ease-out);
+  }
+  table.data-table tbody tr:hover::before {
+    transform: scaleY(1);
+  }
+  table.data-table tbody td.metric-active {
+    color: var(--ink-0);
+    background: rgba(201, 169, 110, 0.04);
+    font-weight: 600;
+  }
 
-  .rank {
-    color: var(--ink-3);
-    font-size: 11px;
-  }
+  .rank { color: var(--ink-3); font-size: 11px; }
 
   .badge {
     display: inline-block;
@@ -617,8 +808,68 @@
   }
   .pct.pos { color: var(--pos); }
   .pct.neg { color: var(--neg); }
+  .pct.muted { color: var(--ink-3); }
 
-  /* ---------- STATES ---------- */
+  /* ==================== MARKETS TAB STATS STRIP ==================== */
+  .stats-strip {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    margin-bottom: 24px;
+  }
+  .stat-cell {
+    background: var(--bg-1);
+    padding: 14px 18px;
+  }
+  .stat-cell .lbl {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    margin-bottom: 6px;
+  }
+  .stat-cell .val {
+    font-family: var(--font-display);
+    font-size: 22px;
+    color: var(--ink-0);
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-cell .val.pos { color: var(--pos); }
+  .stat-cell .val.neg { color: var(--neg); }
+
+  /* ==================== CHART CARDS ==================== */
+  .chart-card {
+    background: var(--bg-1);
+    border: 1px solid var(--line);
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  .chart-card h3 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 20px;
+    color: var(--ink-0);
+    margin-bottom: 4px;
+  }
+  .chart-card h3 em { font-style: italic; color: var(--accent); }
+  .chart-card .chart-meta {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    margin-bottom: 18px;
+  }
+  .chart-canvas-wrap {
+    position: relative;
+    height: 700px;
+  }
+  .chart-canvas-wrap.short { height: 340px; }
+
+  /* ==================== LOADING ==================== */
   .loading-overlay {
     position: fixed;
     inset: 0;
@@ -629,7 +880,7 @@
     align-items: center;
     justify-content: center;
     gap: 24px;
-    transition: opacity 0.4s ease;
+    transition: opacity 0.5s var(--ease-out);
   }
   .loading-overlay.hidden { opacity: 0; pointer-events: none; }
   .loading-overlay .logo {
@@ -665,28 +916,34 @@
     letter-spacing: 0.18em;
   }
 
-  .error-banner {
-    background: rgba(248, 113, 113, 0.08);
-    border: 1px solid rgba(248, 113, 113, 0.3);
-    color: var(--neg);
-    padding: 16px 20px;
-    margin-bottom: 24px;
-    font-size: 13px;
-    display: none;
+  /* Skeleton shimmer for content */
+  .skeleton {
+    background: linear-gradient(90deg,
+      var(--bg-2) 0%,
+      var(--bg-3) 50%,
+      var(--bg-2) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.8s ease-in-out infinite;
+    border-radius: 2px;
+    color: transparent !important;
   }
-  .error-banner.visible { display: block; }
-  .error-banner strong { color: #fca5a5; }
-
-  .info-banner {
-    background: rgba(201, 169, 110, 0.06);
-    border-left: 2px solid var(--accent);
-    color: var(--ink-1);
-    padding: 14px 18px;
-    margin-bottom: 28px;
-    font-size: 12px;
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
   }
-  .info-banner strong { color: var(--accent); font-weight: 500; }
 
+  /* ==================== SCROLL REVEAL ==================== */
+  .reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.7s var(--ease-out), transform 0.7s var(--ease-out);
+  }
+  .reveal.revealed {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ==================== EMPTY STATE ==================== */
   .empty-state {
     padding: 80px 20px;
     text-align: center;
@@ -696,7 +953,7 @@
     font-size: 18px;
   }
 
-  /* ---------- FOOTER ---------- */
+  /* ==================== FOOTER ==================== */
   footer {
     margin-top: 64px;
     padding-top: 24px;
@@ -710,11 +967,14 @@
     justify-content: space-between;
   }
 
-  /* ---------- RESPONSIVE ---------- */
+  /* ==================== RESPONSIVE ==================== */
   @media (max-width: 1100px) {
     .summary-grid { grid-template-columns: repeat(2, 1fr); }
-    .charts-grid { grid-template-columns: 1fr; }
     .filter-bar { grid-template-columns: 1fr 1fr; }
+    .movers-grid { grid-template-columns: 1fr; }
+    .stats-strip { grid-template-columns: repeat(3, 1fr); }
+    #worldMap { height: 480px; }
+    .chart-canvas-wrap { height: 580px; }
   }
   @media (max-width: 720px) {
     .container { padding: 20px 16px 40px; }
@@ -722,6 +982,10 @@
     .header-controls { align-items: flex-start; }
     .summary-grid { grid-template-columns: 1fr; }
     .filter-bar { grid-template-columns: 1fr; }
+    .tab-btn { font-size: 17px; padding: 12px 16px; }
+    .metric-bar { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .stats-strip { grid-template-columns: repeat(2, 1fr); }
+    #worldMap { height: 360px; }
   }
 </style>
 </head>
@@ -735,12 +999,12 @@
 
 <div class="container">
 
-  <!-- HEADER -->
+  <!-- ===== HEADER ===== -->
   <header class="masthead">
     <div>
       <div class="brand-line"><span class="dot"></span><span>Live Markets Terminal</span></div>
       <h1 class="title">MSCI World <em>Markets</em></h1>
-      <p class="subtitle">A cross-section of 44 developed and emerging equity markets, tracked by daily, month-to-date, year-to-date and trailing twelve-month total return in local currency.</p>
+      <p class="subtitle">A cross-section of 44 developed and emerging equity markets, tracked by daily, month-to-date, quarter, year-to-date and multi-year returns.</p>
     </div>
     <div class="header-controls">
       <div class="timestamp-block">
@@ -760,68 +1024,41 @@
     <strong>Data source &mdash;</strong> <span id="dataSourceLabel">Loading…</span>
   </div>
 
-  <!-- SUMMARY CARDS -->
-  <section class="summary-grid" id="summaryGrid">
-    <div class="summary-card">
-      <div class="summary-label">Markets Tracked</div>
-      <div class="summary-value" id="sumTotal">&mdash;</div>
-      <div class="summary-meta"><strong id="sumDev">&mdash;</strong> developed &middot; <strong id="sumEmerg">&mdash;</strong> emerging</div>
-    </div>
-    <div class="summary-card">
-      <div class="summary-label">Average 1Y Return</div>
-      <div class="summary-value" id="sumAvg">&mdash;</div>
-      <div class="summary-meta">Equal-weighted across all markets</div>
-    </div>
-    <div class="summary-card">
-      <div class="summary-label">Best Performer (1Y)</div>
-      <div class="summary-value" id="sumBest">&mdash;</div>
-      <div class="summary-meta"><strong id="sumBestName">&mdash;</strong></div>
-    </div>
-    <div class="summary-card">
-      <div class="summary-label">Worst Performer (1Y)</div>
-      <div class="summary-value" id="sumWorst">&mdash;</div>
-      <div class="summary-meta"><strong id="sumWorstName">&mdash;</strong></div>
-    </div>
-  </section>
-
-  <!-- FILTER BAR -->
+  <!-- ===== FILTER BAR ===== -->
   <div class="filter-bar">
     <div class="filter-group">
       <label for="searchInput">Search</label>
       <input type="text" id="searchInput" placeholder="Country name…" autocomplete="off" />
     </div>
     <div class="filter-group">
-      <label for="regionSelect">Region</label>
-      <select id="regionSelect">
-        <option value="all">All regions</option>
-        <option value="Americas">Americas</option>
-        <option value="EMEA">EMEA</option>
-        <option value="Asia-Pacific">Asia-Pacific</option>
-      </select>
-    </div>
-    <div class="filter-group">
-      <label>Market Type</label>
-      <div class="market-toggle" id="marketToggle">
-        <button class="active" data-type="all">All</button>
-        <button data-type="Developed">Developed</button>
-        <button data-type="Emerging">Emerging</button>
+      <label>Region</label>
+      <div class="chip-row" id="regionChips">
+        <button class="chip active" data-value="all">All</button>
+        <button class="chip" data-value="Americas">Americas</button>
+        <button class="chip" data-value="EMEA">EMEA</button>
+        <button class="chip" data-value="Asia-Pacific">Asia-Pacific</button>
       </div>
     </div>
     <div class="filter-group">
-      <label>Min 1Y Return: <span class="perf-range-display" id="perfRangeLabel">≥ -100%</span></label>
+      <label>Market Type</label>
+      <div class="chip-row" id="typeChips">
+        <button class="chip active" data-value="all">All</button>
+        <button class="chip" data-value="Developed">Developed</button>
+        <button class="chip" data-value="Emerging">Emerging</button>
+      </div>
+    </div>
+    <div class="filter-group">
+      <label>Min Return: <span class="perf-range-display" id="perfRangeLabel">≥ -100%</span></label>
       <div class="range-slider-wrap">
         <input type="range" id="perfRange" min="-100" max="100" value="-100" step="1" />
       </div>
     </div>
   </div>
 
-  <!-- WORLD MAP -->
-  <section class="map-section">
-    <div class="section-header">
-      <h2 class="section-title">Geographic <em>Heat Map</em></h2>
-      <div class="section-meta" id="mapMetricLabel">Coloured by 1Y return</div>
-    </div>
-    <div class="metric-toggle" id="mapMetricToggle">
+  <!-- ===== GLOBAL METRIC SELECTOR ===== -->
+  <div class="metric-bar">
+    <span class="metric-label">Metric</span>
+    <div class="metric-toggle" id="globalMetric">
       <button data-metric="day">1D</button>
       <button data-metric="mtd">MTD</button>
       <button data-metric="threeMtd">3MTD</button>
@@ -831,7 +1068,48 @@
       <button data-metric="fiveYr">5Y</button>
       <button data-metric="tenYr">10Y</button>
     </div>
-    <div class="map-wrap">
+  </div>
+
+  <!-- ===== TABS ===== -->
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="overview">Overview</button>
+    <button class="tab-btn" data-tab="markets">Markets</button>
+    <button class="tab-btn" data-tab="compare">Compare</button>
+  </nav>
+
+  <!-- ===== TAB: OVERVIEW ===== -->
+  <section class="tab-panel active" id="tab-overview">
+
+    <!-- Summary cards -->
+    <div class="summary-grid">
+      <div class="summary-card">
+        <div class="summary-label">Markets Tracked</div>
+        <div class="summary-value" id="sumTotal">&mdash;</div>
+        <div class="summary-meta"><strong id="sumDev">&mdash;</strong> developed · <strong id="sumEmerg">&mdash;</strong> emerging</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label"><span id="sumAvgLabel">Average</span></div>
+        <div class="summary-value" id="sumAvg">&mdash;</div>
+        <div class="summary-meta">Equal-weighted across visible markets</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Best Performer</div>
+        <div class="summary-value" id="sumBest">&mdash;</div>
+        <div class="summary-meta"><strong id="sumBestName">&mdash;</strong></div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-label">Worst Performer</div>
+        <div class="summary-value" id="sumWorst">&mdash;</div>
+        <div class="summary-meta"><strong id="sumWorstName">&mdash;</strong></div>
+      </div>
+    </div>
+
+    <!-- World map -->
+    <div class="section-header">
+      <h2 class="section-title">Geographic <em>Heat Map</em></h2>
+      <div class="section-meta" id="mapMetricLabel">Coloured by 1Y return</div>
+    </div>
+    <div class="map-wrap reveal">
       <div class="map-controls">
         <button id="zoomIn" title="Zoom in">+</button>
         <button id="zoomOut" title="Zoom out">&minus;</button>
@@ -839,61 +1117,65 @@
       </div>
       <svg id="worldMap"></svg>
       <div class="map-legend">
-        <div class="legend-title">Return scale</div>
-        <div class="legend-bar"></div>
+        <div class="legend-title" id="legendTitle">1Y Return scale</div>
+        <div class="legend-bar" id="legendBar"></div>
         <div class="legend-labels" id="legendLabels">
-          <span>-50%</span><span>0</span><span>+50%</span>
+          <span>—</span><span>0</span><span>—</span>
         </div>
       </div>
       <div class="tooltip" id="mapTooltip"></div>
     </div>
-  </section>
 
-  <!-- CHARTS GRID -->
-  <section class="charts-grid">
-    <div class="chart-card">
-      <h3>Performance Ranking</h3>
-      <div class="chart-meta">All markets · sorted</div>
-      <div class="metric-toggle" id="barMetricToggle">
-        <button data-metric="day">1D</button>
-        <button data-metric="mtd">MTD</button>
-        <button data-metric="threeMtd">3MTD</button>
-        <button data-metric="ytd">YTD</button>
-        <button class="active" data-metric="oneYr">1Y</button>
-        <button data-metric="threeYr">3Y</button>
-        <button data-metric="fiveYr">5Y</button>
-        <button data-metric="tenYr">10Y</button>
-      </div>
-      <div class="chart-canvas-wrap tall">
-        <canvas id="barChart"></canvas>
-      </div>
+    <!-- Top movers -->
+    <div class="section-header">
+      <h2 class="section-title">Top <em>Movers</em></h2>
+      <div class="section-meta" id="moversMetricLabel">By 1Y return</div>
     </div>
-    <div class="chart-card">
-      <h3>Return Distribution</h3>
-      <div class="chart-meta">Histogram · 1Y returns</div>
-      <div class="metric-toggle" id="histMetricToggle">
-        <button data-metric="day">1D</button>
-        <button data-metric="mtd">MTD</button>
-        <button data-metric="threeMtd">3MTD</button>
-        <button data-metric="ytd">YTD</button>
-        <button class="active" data-metric="oneYr">1Y</button>
-        <button data-metric="threeYr">3Y</button>
-        <button data-metric="fiveYr">5Y</button>
-        <button data-metric="tenYr">10Y</button>
+    <div class="movers-grid reveal">
+      <div class="movers-card">
+        <h3 class="gainers">Top <em>Gainers</em></h3>
+        <div class="sub">Largest positive returns</div>
+        <ul class="movers-list" id="moversGainers"></ul>
       </div>
-      <div class="chart-canvas-wrap">
-        <canvas id="histChart"></canvas>
+      <div class="movers-card">
+        <h3 class="losers">Top <em>Decliners</em></h3>
+        <div class="sub">Largest negative returns</div>
+        <ul class="movers-list" id="moversLosers"></ul>
       </div>
     </div>
   </section>
 
-  <!-- DATA TABLE -->
-  <section class="table-section">
+  <!-- ===== TAB: MARKETS ===== -->
+  <section class="tab-panel" id="tab-markets">
+
+    <div class="stats-strip">
+      <div class="stat-cell">
+        <div class="lbl">Visible</div>
+        <div class="val" id="statsVisible">—</div>
+      </div>
+      <div class="stat-cell">
+        <div class="lbl">Up / Down</div>
+        <div class="val"><span class="pos" id="statsUp">—</span> / <span class="neg" id="statsDown">—</span></div>
+      </div>
+      <div class="stat-cell">
+        <div class="lbl">Median</div>
+        <div class="val" id="statsMedian">—</div>
+      </div>
+      <div class="stat-cell">
+        <div class="lbl">Range</div>
+        <div class="val" id="statsRange">—</div>
+      </div>
+      <div class="stat-cell">
+        <div class="lbl">Active Metric</div>
+        <div class="val" style="color: var(--accent)" id="statsMetric">1Y</div>
+      </div>
+    </div>
+
     <div class="section-header">
       <h2 class="section-title">Markets <em>Table</em></h2>
       <div class="section-meta" id="tableCount">Showing — of — markets</div>
     </div>
-    <div class="table-wrap">
+    <div class="table-wrap reveal">
       <table class="data-table" id="dataTable">
         <thead>
           <tr>
@@ -916,6 +1198,24 @@
     </div>
   </section>
 
+  <!-- ===== TAB: COMPARE ===== -->
+  <section class="tab-panel" id="tab-compare">
+    <div class="chart-card reveal">
+      <h3>Performance <em>Ranking</em></h3>
+      <div class="chart-meta" id="barChartMeta">All visible markets · sorted by 1Y</div>
+      <div class="chart-canvas-wrap">
+        <canvas id="barChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card reveal">
+      <h3>Return <em>Distribution</em></h3>
+      <div class="chart-meta" id="histChartMeta">Histogram · 1Y returns across visible markets</div>
+      <div class="chart-canvas-wrap short">
+        <canvas id="histChart"></canvas>
+      </div>
+    </div>
+  </section>
+
   <footer>
     <div>MSCI World Markets · Performance Terminal</div>
     <div id="footerMeta">—</div>
@@ -923,15 +1223,21 @@
 </div>
 
 <script>
-/* =========================================================================
-   MSCI WORLD MARKETS · PERFORMANCE DASHBOARD
-   ========================================================================= */
+/* ============================================================
+   MSCI WORLD MARKETS DASHBOARD — v7
+   ============================================================ */
 
-// ---------- COUNTRY METADATA ----------
-// MSCI Developed (23) + Emerging (21) markets with ISO numeric codes
-// (matches world-atlas TopoJSON country IDs)
+// ---------- CONFIG ----------
+const CONFIG = {
+  githubUser: 'ketanjoshicfp',
+  githubRepo: 'msci-dashboard',
+  branch:     'main',
+  dataPath:   'data/msci-data.json'
+};
+const DATA_URL = `https://raw.githubusercontent.com/${CONFIG.githubUser}/${CONFIG.githubRepo}/${CONFIG.branch}/${CONFIG.dataPath}`;
+
+// ---------- COUNTRY METADATA (ISO codes for the map) ----------
 const COUNTRY_META = {
-  // Developed Markets
   'USA':           { iso: '840', region: 'Americas',     type: 'Developed' },
   'Canada':        { iso: '124', region: 'Americas',     type: 'Developed' },
   'Australia':     { iso: '036', region: 'Asia-Pacific', type: 'Developed' },
@@ -955,8 +1261,6 @@ const COUNTRY_META = {
   'Sweden':        { iso: '752', region: 'EMEA',         type: 'Developed' },
   'Switzerland':   { iso: '756', region: 'EMEA',         type: 'Developed' },
   'United Kingdom':{ iso: '826', region: 'EMEA',         type: 'Developed' },
-
-  // Emerging Markets
   'Brazil':        { iso: '076', region: 'Americas',     type: 'Emerging' },
   'Chile':         { iso: '152', region: 'Americas',     type: 'Emerging' },
   'Colombia':      { iso: '170', region: 'Americas',     type: 'Emerging' },
@@ -980,64 +1284,49 @@ const COUNTRY_META = {
   'Greece':        { iso: '300', region: 'EMEA',         type: 'Emerging' }
 };
 
-// =========================================================================
-// CONFIG — EDIT THESE TWO LINES AFTER YOU CREATE YOUR GITHUB REPO
-// =========================================================================
-const CONFIG = {
-  githubUser: 'ketanjoshicfp',   // <— change me
-  githubRepo: 'msci-dashboard',          // <— change me if different
-  branch:     'main',
-  dataPath:   'data/msci-data.json'
+// ---------- METRIC LABELS ----------
+const METRIC_LABELS = {
+  day:      '1D',
+  mtd:      'MTD',
+  threeMtd: '3MTD',
+  ytd:      'YTD',
+  oneYr:    '1Y',
+  threeYr:  '3Y (ann.)',
+  fiveYr:   '5Y (ann.)',
+  tenYr:    '10Y (ann.)'
 };
-// Data URL (auto-built):
-const DATA_URL = `https://raw.githubusercontent.com/${CONFIG.githubUser}/${CONFIG.githubRepo}/${CONFIG.branch}/${CONFIG.dataPath}`;
+const METRIC_SHORT = {
+  day: '1D', mtd: 'MTD', threeMtd: '3MTD', ytd: 'YTD',
+  oneYr: '1Y', threeYr: '3Y', fiveYr: '5Y', tenYr: '10Y'
+};
 
 // ---------- STATE ----------
 const CACHE_KEY = 'msci_dashboard_cache_v3';
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 const state = {
   data: [],
   filtered: [],
-  filters: {
-    search: '',
-    region: 'all',
-    type: 'all',
-    minPerf: -100
-  },
+  filters: { search: '', region: 'all', type: 'all', minPerf: -100 },
+  metric: 'oneYr',
   sort: { key: 'oneYr', dir: 'desc' },
-  mapMetric: 'oneYr',
-  barMetric: 'oneYr',
-  histMetric: 'oneYr',
-  zoom: null,
-  svg: null,
-  g: null,
-  projection: null,
-  path: null,
-  topo: null,
-  barChart: null,
-  histChart: null
+  activeTab: 'overview',
+  zoom: null, svg: null, g: null, projection: null, path: null, topo: null,
+  barChart: null, histChart: null,
+  colorScale: null,
 };
 
-// ---------- DATA FETCH ----------
-/**
- * Fetches MSCI market data from the JSON file committed daily by the GitHub
- * Action in this repo. Add `?t=<timestamp>` to bust both the localStorage
- * cache and any CDN cache when the user clicks Refresh.
- */
+// ============================================================
+// DATA FETCH
+// ============================================================
 async function fetchMarketData() {
   const url = `${DATA_URL}?t=${Date.now()}`;
   const resp = await fetch(url, { cache: 'no-store' });
-  if (!resp.ok) {
-    throw new Error(`HTTP ${resp.status} fetching ${url}`);
-  }
+  if (!resp.ok) throw new Error(`HTTP ${resp.status} fetching ${url}`);
   const payload = await resp.json();
-
   if (!payload.markets || !Array.isArray(payload.markets)) {
     throw new Error('Malformed data: missing markets array');
   }
-
-  // Enrich each row with region/type (in case the JSON is sparse) and return.
   return {
     markets: payload.markets.map(d => ({
       country:  d.country,
@@ -1049,8 +1338,8 @@ async function fetchMarketData() {
       threeYr:  d.threeYr,
       fiveYr:   d.fiveYr,
       tenYr:    d.tenYr,
-      region:   d.region || (COUNTRY_META[d.country] && COUNTRY_META[d.country].region) || 'Other',
-      type:     d.type   || (COUNTRY_META[d.country] && COUNTRY_META[d.country].type)   || 'Developed'
+      region:   d.region || (COUNTRY_META[d.country]?.region) || 'Other',
+      type:     d.type   || (COUNTRY_META[d.country]?.type)   || 'Developed'
     })),
     meta: {
       lastUpdated: payload.lastUpdated,
@@ -1063,7 +1352,6 @@ async function fetchMarketData() {
   };
 }
 
-// ---------- CACHE ----------
 function loadCache() {
   try {
     const raw = localStorage.getItem(CACHE_KEY);
@@ -1073,105 +1361,269 @@ function loadCache() {
     return obj;
   } catch (e) { return null; }
 }
-
 function saveCache(data) {
-  try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({
-      ts: Date.now(),
-      data
-    }));
-  } catch (e) { console.warn('Cache save failed:', e); }
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); }
+  catch (e) { console.warn('Cache save failed:', e); }
 }
 
-// ---------- HELPERS ----------
+// ============================================================
+// HELPERS
+// ============================================================
 function fmtPct(v) {
   if (v === null || v === undefined || Number.isNaN(v)) return '—';
-  const sign = v > 0 ? '+' : '';
-  return sign + v.toFixed(2) + '%';
+  return (v > 0 ? '+' : '') + v.toFixed(2) + '%';
 }
-
 function pctClass(v) {
-  if (v === null || v === undefined) return '';
+  if (v === null || v === undefined) return 'muted';
   return v >= 0 ? 'pos' : 'neg';
 }
-
 function fmtTimestamp(ts) {
   if (!ts) return '—';
-  const d = new Date(ts);
-  return d.toLocaleString('en-GB', {
+  return new Date(ts).toLocaleString('en-GB', {
     day: '2-digit', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit'
   });
 }
 
-// Diverging colour scale: -50 → 0 → +50 maps to red → grey → green
-function returnColor(v) {
-  if (v === null || v === undefined || Number.isNaN(v)) return '#1c2230';
-  const clamped = Math.max(-50, Math.min(50, v));
-  const t = (clamped + 50) / 100; // 0..1
-  // Smooth interpolation through three stops
-  if (t < 0.5) {
-    const u = t * 2; // 0..1 from red to neutral
-    return d3.interpolateRgb('#7f1d1d', '#404040')(u);
+/* Tween any DOM element's text content from one number to another */
+function tweenNumber(el, fromValue, toValue, opts = {}) {
+  const duration = opts.duration ?? 450;
+  const formatter = opts.formatter ?? fmtPct;
+  const start = performance.now();
+  function step(now) {
+    const t = Math.min((now - start) / duration, 1);
+    const eased = 1 - Math.pow(1 - t, 3); // easeOutCubic
+    const v = fromValue + (toValue - fromValue) * eased;
+    el.textContent = formatter(v);
+    if (t < 1) requestAnimationFrame(step);
+    else el.dataset.value = toValue;
+  }
+  requestAnimationFrame(step);
+}
+/* Set numeric content, tweening from previous value if there is one */
+function setTweenedValue(el, value, formatter) {
+  const prev = parseFloat(el.dataset.value);
+  const target = (value === null || value === undefined || Number.isNaN(value)) ? 0 : value;
+  if (Number.isFinite(prev)) {
+    tweenNumber(el, prev, target, { formatter });
   } else {
-    const u = (t - 0.5) * 2; // 0..1 from neutral to green
-    return d3.interpolateRgb('#404040', '#15803d')(u);
+    el.textContent = formatter ? formatter(target) : fmtPct(target);
+    el.dataset.value = target;
   }
 }
 
-// ---------- SUMMARY ----------
-function renderSummary() {
-  const data = state.data;
-  if (!data.length) return;
+// ============================================================
+// COLOUR SCALE (auto-stretching, 5-stop diverging)
+// ============================================================
+function buildColorScale(values) {
+  const valid = values.filter(v => v !== null && v !== undefined && Number.isFinite(v));
+  if (valid.length === 0) {
+    return { fn: () => '#1c2230', min: 0, max: 0, hasZeroCross: false };
+  }
+  const min = Math.min(...valid);
+  const max = Math.max(...valid);
 
-  document.getElementById('sumTotal').textContent = data.length;
-  document.getElementById('sumDev').textContent = data.filter(d => d.type === 'Developed').length;
-  document.getElementById('sumEmerg').textContent = data.filter(d => d.type === 'Emerging').length;
+  // Robust outlier handling: clamp to the 5th/95th percentile so a single
+  // extreme value (e.g. Korea +224%) doesn't flatten the rest of the gradient.
+  // Sort copy
+  const sorted = [...valid].sort((a, b) => a - b);
+  const p5  = sorted[Math.floor(sorted.length * 0.05)];
+  const p95 = sorted[Math.floor(sorted.length * 0.95)];
+  const lo = Math.min(p5, min);   // keep actual min if p5 above
+  const hi = Math.max(p95, max);  // keep actual max if p95 below
 
-  const avg = data.reduce((s, d) => s + d.oneYr, 0) / data.length;
-  const avgEl = document.getElementById('sumAvg');
-  avgEl.textContent = fmtPct(avg);
-  avgEl.className = 'summary-value ' + pctClass(avg);
+  let fn;
+  const hasZeroCross = (lo < 0 && hi > 0);
 
-  const sorted = [...data].sort((a, b) => b.oneYr - a.oneYr);
-  const best = sorted[0];
-  const worst = sorted[sorted.length - 1];
-
-  const bestEl = document.getElementById('sumBest');
-  bestEl.textContent = fmtPct(best.oneYr);
-  bestEl.className = 'summary-value ' + pctClass(best.oneYr);
-  document.getElementById('sumBestName').textContent = best.country;
-
-  const worstEl = document.getElementById('sumWorst');
-  worstEl.textContent = fmtPct(worst.oneYr);
-  worstEl.className = 'summary-value ' + pctClass(worst.oneYr);
-  document.getElementById('sumWorstName').textContent = worst.country;
+  if (hasZeroCross) {
+    // Diverging: anchor at 0
+    const range = Math.max(Math.abs(p5), Math.abs(p95));
+    fn = d3.scaleLinear()
+      .domain([-range, -range * 0.4, 0, range * 0.4, range])
+      .range(['#7f1d1d', '#ef4444', '#374151', '#22c55e', '#15803d'])
+      .interpolate(d3.interpolateRgb)
+      .clamp(true);
+  } else if (lo >= 0) {
+    // All positive: green gradient
+    fn = d3.scaleLinear()
+      .domain([lo, (lo + hi) / 2, hi])
+      .range(['#374151', '#22c55e', '#15803d'])
+      .interpolate(d3.interpolateRgb)
+      .clamp(true);
+  } else {
+    // All negative: red gradient
+    fn = d3.scaleLinear()
+      .domain([lo, (lo + hi) / 2, hi])
+      .range(['#7f1d1d', '#ef4444', '#374151'])
+      .interpolate(d3.interpolateRgb)
+      .clamp(true);
+  }
+  return { fn, min, max, hasZeroCross };
 }
 
-// ---------- FILTER ----------
+// ============================================================
+// FILTERS
+// ============================================================
 function applyFilters() {
   const { search, region, type, minPerf } = state.filters;
   const q = search.trim().toLowerCase();
-
   state.filtered = state.data.filter(d => {
     if (q && !d.country.toLowerCase().includes(q)) return false;
     if (region !== 'all' && d.region !== region) return false;
     if (type !== 'all' && d.type !== type) return false;
-    if (d.oneYr < minPerf) return false;
+    if (typeof d[state.metric] === 'number' && d[state.metric] < minPerf) return false;
     return true;
   });
-
-  renderTable();
-  renderBarChart();
-  renderHistogram();
-  updateMapColors();
+  renderAll();
 }
 
-// ---------- TABLE ----------
+// ============================================================
+// RENDER (orchestrator)
+// ============================================================
+function renderAll() {
+  const values = state.filtered.map(d => d[state.metric]);
+  state.colorScale = buildColorScale(values);
+
+  renderSummary();
+  renderMovers();
+  updateMapColors();
+  updateLegend();
+  renderTable();
+  renderStatsStrip();
+  renderBarChart();
+  renderHistogram();
+  updateMetricLabels();
+}
+
+function updateMetricLabels() {
+  const m = METRIC_SHORT[state.metric];
+  document.getElementById('mapMetricLabel').textContent = `Coloured by ${m} return`;
+  document.getElementById('legendTitle').textContent = `${m} Return scale`;
+  document.getElementById('moversMetricLabel').textContent = `By ${m} return`;
+  document.getElementById('statsMetric').textContent = m;
+  document.getElementById('sumAvgLabel').textContent = `Average ${m} Return`;
+  document.getElementById('barChartMeta').textContent = `All visible markets · sorted by ${m}`;
+  document.getElementById('histChartMeta').textContent = `Histogram · ${m} returns across visible markets`;
+}
+
+// ============================================================
+// SUMMARY CARDS
+// ============================================================
+function renderSummary() {
+  const data = state.filtered;
+  if (!data.length) {
+    document.getElementById('sumTotal').textContent = '0';
+    document.getElementById('sumAvg').textContent = '—';
+    document.getElementById('sumBest').textContent = '—';
+    document.getElementById('sumWorst').textContent = '—';
+    return;
+  }
+  const m = state.metric;
+  const values = data.map(d => d[m]).filter(v => Number.isFinite(v));
+  document.getElementById('sumTotal').textContent = data.length;
+  document.getElementById('sumDev').textContent = data.filter(d => d.type === 'Developed').length;
+  document.getElementById('sumEmerg').textContent = data.filter(d => d.type === 'Emerging').length;
+
+  if (values.length === 0) {
+    document.getElementById('sumAvg').textContent = '—';
+    document.getElementById('sumBest').textContent = '—';
+    document.getElementById('sumWorst').textContent = '—';
+    return;
+  }
+  const avg = values.reduce((s, v) => s + v, 0) / values.length;
+  const avgEl = document.getElementById('sumAvg');
+  setTweenedValue(avgEl, avg);
+  avgEl.className = 'summary-value ' + pctClass(avg);
+
+  const sorted = [...data].filter(d => Number.isFinite(d[m])).sort((a, b) => b[m] - a[m]);
+  const best = sorted[0];
+  const worst = sorted[sorted.length - 1];
+
+  const bestEl = document.getElementById('sumBest');
+  setTweenedValue(bestEl, best[m]);
+  bestEl.className = 'summary-value ' + pctClass(best[m]);
+  document.getElementById('sumBestName').textContent = best.country;
+
+  const worstEl = document.getElementById('sumWorst');
+  setTweenedValue(worstEl, worst[m]);
+  worstEl.className = 'summary-value ' + pctClass(worst[m]);
+  document.getElementById('sumWorstName').textContent = worst.country;
+}
+
+// ============================================================
+// TOP MOVERS
+// ============================================================
+function renderMovers() {
+  const m = state.metric;
+  const data = state.filtered.filter(d => Number.isFinite(d[m]));
+  if (data.length === 0) {
+    document.getElementById('moversGainers').innerHTML = '<li class="empty-state" style="padding:20px;font-size:13px">No data</li>';
+    document.getElementById('moversLosers').innerHTML = '';
+    return;
+  }
+  const sorted = [...data].sort((a, b) => b[m] - a[m]);
+  const gainers = sorted.slice(0, 5);
+  const losers  = sorted.slice(-5).reverse();
+  const allValues = sorted.map(d => Math.abs(d[m]));
+  const maxAbs = Math.max(...allValues, 0.01);
+
+  function row(d) {
+    const v = d[m];
+    const pct = Math.max(2, Math.abs(v) / maxAbs * 100);
+    const cls = v >= 0 ? 'pos' : 'neg';
+    return `
+      <li class="mover-row">
+        <span class="country">${d.country}</span>
+        <span class="bar"><span class="fill ${cls}" style="width:${pct.toFixed(1)}%"></span></span>
+        <span class="value ${cls}">${fmtPct(v)}</span>
+      </li>
+    `;
+  }
+  document.getElementById('moversGainers').innerHTML = gainers.map(row).join('');
+  document.getElementById('moversLosers').innerHTML  = losers.filter(d => d[m] < 0).map(row).join('') ||
+    '<li class="empty-state" style="padding:20px;font-size:13px">All visible markets positive</li>';
+}
+
+// ============================================================
+// STATS STRIP (Markets tab)
+// ============================================================
+function renderStatsStrip() {
+  const m = state.metric;
+  const data = state.filtered;
+  const values = data.map(d => d[m]).filter(v => Number.isFinite(v));
+
+  document.getElementById('statsVisible').textContent = data.length;
+
+  if (values.length === 0) {
+    document.getElementById('statsUp').textContent = '—';
+    document.getElementById('statsDown').textContent = '—';
+    document.getElementById('statsMedian').textContent = '—';
+    document.getElementById('statsRange').textContent = '—';
+    return;
+  }
+  const up = values.filter(v => v >= 0).length;
+  const down = values.length - up;
+  document.getElementById('statsUp').textContent = up;
+  document.getElementById('statsDown').textContent = down;
+
+  const sorted = [...values].sort((a, b) => a - b);
+  const median = sorted.length % 2 === 0
+    ? (sorted[sorted.length/2 - 1] + sorted[sorted.length/2]) / 2
+    : sorted[Math.floor(sorted.length/2)];
+  document.getElementById('statsMedian').textContent = fmtPct(median);
+  document.getElementById('statsRange').textContent = `${fmtPct(sorted[0])} → ${fmtPct(sorted[sorted.length-1])}`;
+}
+
+// ============================================================
+// TABLE
+// ============================================================
 function renderTable() {
   const { key, dir } = state.sort;
   const sorted = [...state.filtered].sort((a, b) => {
     let av = a[key], bv = b[key];
+    if (av == null && bv == null) return 0;
+    if (av == null) return 1;
+    if (bv == null) return -1;
     if (typeof av === 'string') { av = av.toLowerCase(); bv = bv.toLowerCase(); }
     if (av < bv) return dir === 'asc' ? -1 : 1;
     if (av > bv) return dir === 'asc' ? 1 : -1;
@@ -1179,33 +1631,41 @@ function renderTable() {
   });
 
   const tbody = document.getElementById('tableBody');
+  const m = state.metric;
+
   if (!sorted.length) {
     tbody.innerHTML = '<tr><td colspan="12"><div class="empty-state">No markets match your filters.</div></td></tr>';
   } else {
-    tbody.innerHTML = sorted.map((d, i) => `
-      <tr data-country="${d.country}">
-        <td><span class="rank">${String(i + 1).padStart(2, '0')}</span></td>
-        <td>${d.country}</td>
-        <td>${d.region}</td>
-        <td><span class="badge ${d.type === 'Developed' ? 'dev' : 'emerg'}">${d.type}</span></td>
-        <td><span class="pct ${pctClass(d.day)}">${fmtPct(d.day)}</span></td>
-        <td><span class="pct ${pctClass(d.mtd)}">${fmtPct(d.mtd)}</span></td>
-        <td><span class="pct ${pctClass(d.threeMtd)}">${fmtPct(d.threeMtd)}</span></td>
-        <td><span class="pct ${pctClass(d.ytd)}">${fmtPct(d.ytd)}</span></td>
-        <td><span class="pct ${pctClass(d.oneYr)}">${fmtPct(d.oneYr)}</span></td>
-        <td><span class="pct ${pctClass(d.threeYr)}">${fmtPct(d.threeYr)}</span></td>
-        <td><span class="pct ${pctClass(d.fiveYr)}">${fmtPct(d.fiveYr)}</span></td>
-        <td><span class="pct ${pctClass(d.tenYr)}">${fmtPct(d.tenYr)}</span></td>
-      </tr>
-    `).join('');
+    tbody.innerHTML = sorted.map((d, i) => {
+      const cell = (val, key) => {
+        const active = key === m ? ' metric-active' : '';
+        return `<td class="${active}"><span class="pct ${pctClass(val)}">${fmtPct(val)}</span></td>`;
+      };
+      return `
+        <tr data-country="${d.country}">
+          <td><span class="rank">${String(i + 1).padStart(2, '0')}</span></td>
+          <td>${d.country}</td>
+          <td>${d.region}</td>
+          <td><span class="badge ${d.type === 'Developed' ? 'dev' : 'emerg'}">${d.type}</span></td>
+          ${cell(d.day, 'day')}
+          ${cell(d.mtd, 'mtd')}
+          ${cell(d.threeMtd, 'threeMtd')}
+          ${cell(d.ytd, 'ytd')}
+          ${cell(d.oneYr, 'oneYr')}
+          ${cell(d.threeYr, 'threeYr')}
+          ${cell(d.fiveYr, 'fiveYr')}
+          ${cell(d.tenYr, 'tenYr')}
+        </tr>
+      `;
+    }).join('');
   }
 
   document.getElementById('tableCount').textContent =
     `Showing ${state.filtered.length} of ${state.data.length} markets`;
 
-  // sort indicator
+  // Header indicators
   document.querySelectorAll('#dataTable thead th').forEach(th => {
-    th.classList.remove('sorted');
+    th.classList.remove('sorted', 'metric-active');
     const arrow = th.querySelector('.sort-arrow');
     if (arrow) arrow.remove();
     if (th.dataset.key === key) {
@@ -1215,39 +1675,38 @@ function renderTable() {
       a.textContent = dir === 'asc' ? '↑' : '↓';
       th.appendChild(a);
     }
+    if (th.dataset.key === m) th.classList.add('metric-active');
   });
 }
 
-// ---------- BAR CHART ----------
+// ============================================================
+// BAR CHART
+// ============================================================
 function renderBarChart() {
-  const metric = state.barMetric;
-  // Filter out countries where this metric is null (e.g. 10Y for newer ETFs)
-  const withData = state.filtered.filter(d => d[metric] !== null && d[metric] !== undefined);
-  const sorted = withData.sort((a, b) => b[metric] - a[metric]);
+  const m = state.metric;
+  const withData = state.filtered.filter(d => Number.isFinite(d[m]));
+  const sorted = withData.sort((a, b) => b[m] - a[m]);
   const labels = sorted.map(d => d.country);
-  const values = sorted.map(d => d[metric]);
-  const colors = values.map(v => v >= 0 ? '#4ade80' : '#f87171');
+  const values = sorted.map(d => d[m]);
+  const colors = values.map(v => state.colorScale.fn(v));
 
   if (state.barChart) state.barChart.destroy();
-  const ctx = document.getElementById('barChart').getContext('2d');
+  const canvas = document.getElementById('barChart');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
 
   state.barChart = new Chart(ctx, {
     type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        data: values,
-        backgroundColor: colors,
-        borderColor: colors,
-        borderWidth: 0,
-        barThickness: 7
-      }]
-    },
+    data: { labels, datasets: [{ data: values, backgroundColor: colors, borderColor: colors, borderWidth: 0, barThickness: 9 }] },
     options: {
       indexAxis: 'y',
       responsive: true,
       maintainAspectRatio: false,
-      animation: { duration: 600 },
+      animation: { duration: 700, easing: 'easeOutQuart' },
+      animations: {
+        x: { duration: 700, easing: 'easeOutQuart' },
+        backgroundColor: { duration: 500 }
+      },
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -1259,31 +1718,18 @@ function renderBarChart() {
           padding: 10,
           titleFont: { family: 'Inter', size: 13 },
           bodyFont: { family: 'JetBrains Mono', size: 11 },
-          callbacks: {
-            label: ctx => {
-              const niceLabel = ({ day: '1D', mtd: 'MTD', threeMtd: '3MTD', ytd: 'YTD',
-                                   oneYr: '1Y', threeYr: '3Y', fiveYr: '5Y', tenYr: '10Y' })[metric] || metric;
-              return `${niceLabel}: ${fmtPct(ctx.parsed.x)}`;
-            }
-          }
+          callbacks: { label: ctx => `${METRIC_SHORT[m]}: ${fmtPct(ctx.parsed.x)}` }
         }
       },
       scales: {
         x: {
           grid: { color: 'rgba(45,53,72,0.4)', drawTicks: false },
-          ticks: {
-            color: '#8a8676',
-            font: { family: 'JetBrains Mono', size: 10 },
-            callback: v => v + '%'
-          },
+          ticks: { color: '#8a8676', font: { family: 'JetBrains Mono', size: 10 }, callback: v => v + '%' },
           border: { color: '#2d3548' }
         },
         y: {
           grid: { display: false },
-          ticks: {
-            color: '#c9c4b8',
-            font: { family: 'Inter', size: 11 }
-          },
+          ticks: { color: '#c9c4b8', font: { family: 'Inter', size: 11 } },
           border: { color: '#2d3548' }
         }
       }
@@ -1291,20 +1737,19 @@ function renderBarChart() {
   });
 }
 
-// ---------- HISTOGRAM ----------
+// ============================================================
+// HISTOGRAM
+// ============================================================
 function renderHistogram() {
-  const metric = state.histMetric;
-  const values = state.filtered.map(d => d[metric]).filter(v => v !== null && v !== undefined);
-
+  const m = state.metric;
+  const values = state.filtered.map(d => d[m]).filter(v => Number.isFinite(v));
   if (!values.length) {
     if (state.histChart) state.histChart.destroy();
     return;
   }
-
-  // Adaptive bins based on metric
   const min = Math.min(...values);
   const max = Math.max(...values);
-  const binCount = 10;
+  const binCount = 12;
   const binWidth = (max - min) / binCount || 1;
 
   const bins = Array.from({ length: binCount }, (_, i) => {
@@ -1312,35 +1757,25 @@ function renderHistogram() {
     const hi = lo + binWidth;
     return { lo, hi, count: 0, mid: (lo + hi) / 2 };
   });
-
   values.forEach(v => {
     let idx = Math.floor((v - min) / binWidth);
     if (idx === binCount) idx = binCount - 1;
-    bins[idx].count++;
+    if (idx >= 0) bins[idx].count++;
   });
 
-  const labels = bins.map(b => `${b.lo.toFixed(1)} to ${b.hi.toFixed(1)}`);
+  const labels = bins.map(b => `${b.lo.toFixed(1)} – ${b.hi.toFixed(1)}`);
   const data = bins.map(b => b.count);
-  const colors = bins.map(b => returnColor(b.mid));
+  const colors = bins.map(b => state.colorScale.fn(b.mid));
 
   if (state.histChart) state.histChart.destroy();
   const ctx = document.getElementById('histChart').getContext('2d');
-
   state.histChart = new Chart(ctx, {
     type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        data,
-        backgroundColor: colors,
-        borderColor: colors,
-        borderWidth: 0
-      }]
-    },
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: colors, borderWidth: 0 }] },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      animation: { duration: 600 },
+      animation: { duration: 700, easing: 'easeOutQuart' },
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -1351,7 +1786,7 @@ function renderHistogram() {
           borderWidth: 1,
           padding: 10,
           callbacks: {
-            title: ctx => `Range ${ctx[0].label}%`,
+            title: ctx => `Range: ${ctx[0].label}%`,
             label: ctx => `${ctx.parsed.y} ${ctx.parsed.y === 1 ? 'market' : 'markets'}`
           }
         }
@@ -1359,22 +1794,12 @@ function renderHistogram() {
       scales: {
         x: {
           grid: { display: false },
-          ticks: {
-            color: '#8a8676',
-            font: { family: 'JetBrains Mono', size: 9 },
-            maxRotation: 45,
-            minRotation: 45
-          },
+          ticks: { color: '#8a8676', font: { family: 'JetBrains Mono', size: 9 }, maxRotation: 40, minRotation: 40 },
           border: { color: '#2d3548' }
         },
         y: {
           grid: { color: 'rgba(45,53,72,0.4)' },
-          ticks: {
-            color: '#8a8676',
-            font: { family: 'JetBrains Mono', size: 10 },
-            stepSize: 1,
-            precision: 0
-          },
+          ticks: { color: '#8a8676', font: { family: 'JetBrains Mono', size: 10 }, stepSize: 1, precision: 0 },
           border: { color: '#2d3548' }
         }
       }
@@ -1382,23 +1807,22 @@ function renderHistogram() {
   });
 }
 
-// ---------- MAP ----------
+// ============================================================
+// MAP
+// ============================================================
 async function initMap() {
   const svg = d3.select('#worldMap');
   state.svg = svg;
   const bbox = svg.node().getBoundingClientRect();
   const width = bbox.width;
   const height = bbox.height;
-
   svg.attr('viewBox', `0 0 ${width} ${height}`);
 
   state.projection = d3.geoNaturalEarth1()
     .scale(width / 6.3)
     .translate([width / 2, height / 1.85]);
-
   state.path = d3.geoPath().projection(state.projection);
 
-  // Sphere background
   svg.append('path')
     .attr('d', state.path({ type: 'Sphere' }))
     .attr('fill', '#0b0e14')
@@ -1411,7 +1835,6 @@ async function initMap() {
     const topo = await d3.json('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json');
     state.topo = topo;
     const countries = topojson.feature(topo, topo.objects.countries);
-
     g.selectAll('path.country-path')
       .data(countries.features)
       .join('path')
@@ -1419,54 +1842,62 @@ async function initMap() {
       .attr('d', state.path)
       .attr('data-id', d => String(d.id).padStart(3, '0'))
       .on('mousemove', handleMapHover)
-      .on('mouseleave', () => {
-        document.getElementById('mapTooltip').classList.remove('visible');
-      });
+      .on('mouseleave', () => document.getElementById('mapTooltip').classList.remove('visible'));
 
-    updateMapColors();
-
-    // Zoom behaviour
     state.zoom = d3.zoom()
       .scaleExtent([1, 8])
-      .on('zoom', (e) => {
-        g.attr('transform', e.transform);
-      });
+      .on('zoom', (e) => g.attr('transform', e.transform));
     svg.call(state.zoom);
-
   } catch (e) {
     console.error('Map load failed:', e);
-    showError('Could not load world map data. Check your internet connection.');
+    showError('Could not load world map data.');
   }
 }
 
 function updateMapColors() {
-  if (!state.g) return;
-  const metric = state.mapMetric;
+  if (!state.g || !state.colorScale) return;
+  const m = state.metric;
   const dataByIso = {};
   state.filtered.forEach(d => {
     const meta = COUNTRY_META[d.country];
     if (meta) dataByIso[meta.iso] = d;
   });
-
   state.g.selectAll('path.country-path')
     .each(function(d) {
       const id = String(d.id).padStart(3, '0');
       const record = dataByIso[id];
       const sel = d3.select(this);
-      if (record) {
+      if (record && Number.isFinite(record[m])) {
         sel.classed('has-data', true)
-           .transition().duration(400)
-           .attr('fill', returnColor(record[metric]));
+           .transition().duration(600).ease(d3.easeCubicInOut)
+           .attr('fill', state.colorScale.fn(record[m]));
       } else {
         sel.classed('has-data', false)
-           .transition().duration(400)
+           .transition().duration(600).ease(d3.easeCubicInOut)
            .attr('fill', '#1c2230');
       }
     });
+}
 
-  document.getElementById('mapMetricLabel').textContent =
-    'Coloured by ' + ({ day: '1D', mtd: 'MTD', threeMtd: '3MTD', ytd: 'YTD',
-                        oneYr: '1Y', threeYr: '3Y', fiveYr: '5Y', tenYr: '10Y' })[metric] + ' return';
+function updateLegend() {
+  if (!state.colorScale) return;
+  const { fn, min, max, hasZeroCross } = state.colorScale;
+  const valuesEl = document.getElementById('legendBar');
+  const labelsEl = document.getElementById('legendLabels');
+
+  // Build a smooth gradient from N samples
+  const stops = [];
+  const N = 24;
+  const lo = min, hi = max;
+  for (let i = 0; i <= N; i++) {
+    const v = lo + (hi - lo) * (i / N);
+    stops.push(`${fn(v)} ${(i / N * 100).toFixed(0)}%`);
+  }
+  valuesEl.style.background = `linear-gradient(90deg, ${stops.join(', ')})`;
+
+  // Label endpoints + zero if it falls in range
+  const mid = hasZeroCross ? '0%' : fmtPct((lo + hi) / 2);
+  labelsEl.innerHTML = `<span>${fmtPct(lo)}</span><span>${mid}</span><span>${fmtPct(hi)}</span>`;
 }
 
 function handleMapHover(event, d) {
@@ -1477,101 +1908,97 @@ function handleMapHover(event, d) {
     tooltip.classList.remove('visible');
     return;
   }
-
+  const row = (lbl, v) => `<div class="tooltip-row"><span class="lbl">${lbl}</span><span class="val ${pctClass(v)}">${fmtPct(v)}</span></div>`;
   tooltip.innerHTML = `
     <div class="tooltip-country">${record.country}</div>
     <div class="tooltip-region">${record.region} · ${record.type}</div>
-    <div class="tooltip-row"><span class="lbl">1D</span><span class="val ${pctClass(record.day)}">${fmtPct(record.day)}</span></div>
-    <div class="tooltip-row"><span class="lbl">MTD</span><span class="val ${pctClass(record.mtd)}">${fmtPct(record.mtd)}</span></div>
-    <div class="tooltip-row"><span class="lbl">3MTD</span><span class="val ${pctClass(record.threeMtd)}">${fmtPct(record.threeMtd)}</span></div>
-    <div class="tooltip-row"><span class="lbl">YTD</span><span class="val ${pctClass(record.ytd)}">${fmtPct(record.ytd)}</span></div>
-    <div class="tooltip-row"><span class="lbl">1Y</span><span class="val ${pctClass(record.oneYr)}">${fmtPct(record.oneYr)}</span></div>
-    <div class="tooltip-row"><span class="lbl">3Y</span><span class="val ${pctClass(record.threeYr)}">${fmtPct(record.threeYr)}</span></div>
-    <div class="tooltip-row"><span class="lbl">5Y</span><span class="val ${pctClass(record.fiveYr)}">${fmtPct(record.fiveYr)}</span></div>
-    <div class="tooltip-row"><span class="lbl">10Y</span><span class="val ${pctClass(record.tenYr)}">${fmtPct(record.tenYr)}</span></div>
+    ${row('1D', record.day)}
+    ${row('MTD', record.mtd)}
+    ${row('3MTD', record.threeMtd)}
+    ${row('YTD', record.ytd)}
+    ${row('1Y', record.oneYr)}
+    ${row('3Y', record.threeYr)}
+    ${row('5Y', record.fiveYr)}
+    ${row('10Y', record.tenYr)}
   `;
-
   const wrap = document.querySelector('.map-wrap');
   const wrapRect = wrap.getBoundingClientRect();
   let x = event.clientX - wrapRect.left + 14;
   let y = event.clientY - wrapRect.top + 14;
-  const ttWidth = 200, ttHeight = 160;
-  if (x + ttWidth > wrapRect.width) x = event.clientX - wrapRect.left - ttWidth - 14;
-  if (y + ttHeight > wrapRect.height) y = event.clientY - wrapRect.top - ttHeight - 14;
+  const ttW = 220, ttH = 280;
+  if (x + ttW > wrapRect.width) x = event.clientX - wrapRect.left - ttW - 14;
+  if (y + ttH > wrapRect.height) y = event.clientY - wrapRect.top - ttH - 14;
   tooltip.style.left = x + 'px';
   tooltip.style.top = y + 'px';
   tooltip.classList.add('visible');
 }
 
-// ---------- ERROR / LOADING ----------
+// ============================================================
+// TABS
+// ============================================================
+function setActiveTab(name) {
+  state.activeTab = name;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
+  // Charts in hidden tabs sometimes lose size; resize on activation
+  setTimeout(() => {
+    if (name === 'compare') {
+      if (state.barChart) state.barChart.resize();
+      if (state.histChart) state.histChart.resize();
+    }
+    triggerScrollReveal();
+  }, 30);
+}
+
+// ============================================================
+// SCROLL REVEAL
+// ============================================================
+let scrollObserver = null;
+function setupScrollReveal() {
+  scrollObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('revealed');
+        scrollObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+  triggerScrollReveal();
+}
+function triggerScrollReveal() {
+  if (!scrollObserver) return;
+  document.querySelectorAll('.reveal:not(.revealed)').forEach(el => {
+    if (el.offsetParent !== null) scrollObserver.observe(el);
+  });
+}
+
+// ============================================================
+// METRIC CHANGE
+// ============================================================
+function setMetric(name) {
+  if (state.metric === name) return;
+  state.metric = name;
+  // If sort key was the old metric, follow it to the new one
+  if (state.sort.key === 'oneYr' || ['day','mtd','threeMtd','ytd','threeYr','fiveYr','tenYr'].includes(state.sort.key)) {
+    state.sort.key = name;
+    state.sort.dir = 'desc';
+  }
+  document.querySelectorAll('#globalMetric button').forEach(b =>
+    b.classList.toggle('active', b.dataset.metric === name));
+  renderAll();
+}
+
+// ============================================================
+// ERROR / BANNER / LOADING
+// ============================================================
 function showError(msg) {
   const banner = document.getElementById('errorBanner');
   banner.innerHTML = `<strong>Data error.</strong> ${msg}`;
   banner.classList.add('visible');
-  setTimeout(() => banner.classList.remove('visible'), 8000);
+  setTimeout(() => banner.classList.remove('visible'), 9000);
 }
-
-function setLoadingStatus(text) {
-  document.getElementById('loadingStatus').textContent = text;
-}
-
-function hideLoader() {
-  document.getElementById('loadingOverlay').classList.add('hidden');
-}
-
-// ---------- MAIN ----------
-async function loadAndRender({ force = false } = {}) {
-  const btn = document.getElementById('refreshBtn');
-  btn.classList.add('loading');
-  btn.disabled = true;
-
-  try {
-    let payload, ts;
-    const cache = force ? null : loadCache();
-    if (cache) {
-      payload = cache.data;
-      ts = cache.ts;
-      setLoadingStatus('Loading from cache...');
-    } else {
-      setLoadingStatus('Fetching MSCI data from GitHub...');
-      payload = await fetchMarketData();
-      ts = Date.now();
-      saveCache(payload);
-    }
-
-    state.data = payload.markets;
-    const meta = payload.meta || {};
-
-    // Headline timestamp = data's actual as-of date, not fetch time
-    const asOfTs = meta.lastUpdated ? new Date(meta.lastUpdated).getTime() : ts;
-    document.getElementById('lastUpdated').textContent = fmtTimestamp(asOfTs);
-
-    // Footer + data-source banner
-    document.getElementById('footerMeta').textContent =
-      `Source: ${meta.source || '—'} · ${state.data.length} markets · Refreshed ${fmtTimestamp(ts)}`;
-    renderDataSourceBanner(meta);
-
-    if (state.data.length === 0) {
-      showError('No market data yet. The GitHub Action may still be running — try Refresh in a few minutes, or check the Actions tab in your repo.');
-    }
-
-    renderSummary();
-    applyFilters();
-
-    setTimeout(hideLoader, 300);
-
-  } catch (e) {
-    console.error(e);
-    showError(
-      `Could not fetch market data. ${e.message}<br>` +
-      `Check that CONFIG.githubUser/githubRepo are set correctly and the repo is public.`
-    );
-    hideLoader();
-  } finally {
-    btn.classList.remove('loading');
-    btn.disabled = false;
-  }
-}
+function setLoadingStatus(text) { document.getElementById('loadingStatus').textContent = text; }
+function hideLoader() { document.getElementById('loadingOverlay').classList.add('hidden'); }
 
 function renderDataSourceBanner(meta) {
   const label = document.getElementById('dataSourceLabel');
@@ -1586,7 +2013,6 @@ function renderDataSourceBanner(meta) {
     'FAILED':      `Last scrape failed — showing nothing. Check the Actions tab for the error log.`,
   }[source] || `Source: ${source} (as of ${asOf})`;
 
-  // Append validation summary if present
   let extra = '';
   const v = meta.validation;
   if (v && typeof v.compared === 'number' && v.compared > 0) {
@@ -1594,17 +2020,66 @@ function renderDataSourceBanner(meta) {
     extra = `<br><span style="color: var(--ink-2); font-size: 11px;">Cross-source validation: ` +
             `${v.compared} countries compared against ETF proxy, ` +
             `<strong style="color: ${colour}">${v.discrepancyCount}</strong> ` +
-            `with discrepancies of ≥${v.threshold}%</span>`;
+            `discrepancies of ≥${v.threshold}% (mostly MSCI Price-return vs ETF Total-return).</span>`;
   }
   label.innerHTML = sourceText + extra;
 }
 
-// ---------- EVENT WIRING ----------
+// ============================================================
+// MAIN
+// ============================================================
+async function loadAndRender({ force = false } = {}) {
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('loading');
+  btn.disabled = true;
+  try {
+    let payload, ts;
+    const cache = force ? null : loadCache();
+    if (cache) {
+      payload = cache.data;
+      ts = cache.ts;
+      setLoadingStatus('Loading from cache…');
+    } else {
+      setLoadingStatus('Fetching MSCI data from GitHub…');
+      payload = await fetchMarketData();
+      ts = Date.now();
+      saveCache(payload);
+    }
+    state.data = payload.markets;
+    const meta = payload.meta || {};
+
+    const asOfTs = meta.lastUpdated ? new Date(meta.lastUpdated).getTime() : ts;
+    document.getElementById('lastUpdated').textContent = fmtTimestamp(asOfTs);
+    document.getElementById('footerMeta').textContent =
+      `Source: ${meta.source || '—'} · ${state.data.length} markets · Refreshed ${fmtTimestamp(ts)}`;
+    renderDataSourceBanner(meta);
+
+    if (state.data.length === 0) {
+      showError('No market data yet. The GitHub Action may still be running — try Refresh in a few minutes, or check the Actions tab.');
+    }
+
+    applyFilters();
+    setTimeout(() => { hideLoader(); triggerScrollReveal(); }, 250);
+
+  } catch (e) {
+    console.error(e);
+    showError(
+      `Could not fetch market data. ${e.message}<br>` +
+      `Check that CONFIG.githubUser/githubRepo are set correctly and the repo is public.`
+    );
+    hideLoader();
+  } finally {
+    btn.classList.remove('loading');
+    btn.disabled = false;
+  }
+}
+
+// ============================================================
+// EVENTS
+// ============================================================
 function wireEvents() {
-  // Refresh button
-  document.getElementById('refreshBtn').addEventListener('click', () => {
-    loadAndRender({ force: true });
-  });
+  // Refresh
+  document.getElementById('refreshBtn').addEventListener('click', () => loadAndRender({ force: true }));
 
   // Search
   document.getElementById('searchInput').addEventListener('input', e => {
@@ -1612,29 +2087,42 @@ function wireEvents() {
     applyFilters();
   });
 
-  // Region
-  document.getElementById('regionSelect').addEventListener('change', e => {
-    state.filters.region = e.target.value;
-    applyFilters();
+  // Region chips
+  document.querySelectorAll('#regionChips .chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('#regionChips .chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      state.filters.region = chip.dataset.value;
+      applyFilters();
+    });
   });
-
-  // Market type toggle
-  document.querySelectorAll('#marketToggle button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('#marketToggle button').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      state.filters.type = btn.dataset.type;
+  // Type chips
+  document.querySelectorAll('#typeChips .chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('#typeChips .chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      state.filters.type = chip.dataset.value;
       applyFilters();
     });
   });
 
-  // Performance range
+  // Perf range
   const perfRange = document.getElementById('perfRange');
   const perfLabel = document.getElementById('perfRangeLabel');
   perfRange.addEventListener('input', e => {
     state.filters.minPerf = +e.target.value;
     perfLabel.textContent = `≥ ${e.target.value}%`;
     applyFilters();
+  });
+
+  // Global metric
+  document.querySelectorAll('#globalMetric button').forEach(btn => {
+    btn.addEventListener('click', () => setMetric(btn.dataset.metric));
+  });
+
+  // Tabs
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => setActiveTab(btn.dataset.tab));
   });
 
   // Table sort
@@ -1652,48 +2140,15 @@ function wireEvents() {
     });
   });
 
-  // Map metric toggle
-  document.querySelectorAll('#mapMetricToggle button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('#mapMetricToggle button').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      state.mapMetric = btn.dataset.metric;
-      updateMapColors();
-    });
-  });
+  // Zoom
+  document.getElementById('zoomIn').addEventListener('click', () =>
+    state.svg.transition().duration(400).call(state.zoom.scaleBy, 1.5));
+  document.getElementById('zoomOut').addEventListener('click', () =>
+    state.svg.transition().duration(400).call(state.zoom.scaleBy, 0.66));
+  document.getElementById('zoomReset').addEventListener('click', () =>
+    state.svg.transition().duration(500).call(state.zoom.transform, d3.zoomIdentity));
 
-  // Bar chart metric toggle
-  document.querySelectorAll('#barMetricToggle button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('#barMetricToggle button').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      state.barMetric = btn.dataset.metric;
-      renderBarChart();
-    });
-  });
-
-  // Histogram metric toggle
-  document.querySelectorAll('#histMetricToggle button').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('#histMetricToggle button').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      state.histMetric = btn.dataset.metric;
-      renderHistogram();
-    });
-  });
-
-  // Zoom controls
-  document.getElementById('zoomIn').addEventListener('click', () => {
-    state.svg.transition().duration(400).call(state.zoom.scaleBy, 1.5);
-  });
-  document.getElementById('zoomOut').addEventListener('click', () => {
-    state.svg.transition().duration(400).call(state.zoom.scaleBy, 0.66);
-  });
-  document.getElementById('zoomReset').addEventListener('click', () => {
-    state.svg.transition().duration(500).call(state.zoom.transform, d3.zoomIdentity);
-  });
-
-  // Window resize
+  // Resize
   let resizeTimer;
   window.addEventListener('resize', () => {
     clearTimeout(resizeTimer);
@@ -1704,12 +2159,15 @@ function wireEvents() {
   });
 }
 
-// ---------- BOOT ----------
+// ============================================================
+// BOOT
+// ============================================================
 (async function init() {
   wireEvents();
-  setLoadingStatus('Initialising map...');
+  setupScrollReveal();
+  setLoadingStatus('Initialising map…');
   await initMap();
-  setLoadingStatus('Loading market data...');
+  setLoadingStatus('Loading market data…');
   await loadAndRender();
 })();
 </script>
