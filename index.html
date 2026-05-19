@@ -724,7 +724,20 @@
     width: 100%;
     border-collapse: collapse;
     font-size: 13px;
+    table-layout: fixed;
   }
+  /* Fixed column widths so flag-rendering inconsistencies don't push columns sideways */
+  table.data-table th:nth-child(1),
+  table.data-table td:nth-child(1) { width: 48px; }
+  table.data-table th:nth-child(2),
+  table.data-table td:nth-child(2) { width: 180px; }
+  table.data-table th:nth-child(3),
+  table.data-table td:nth-child(3) { width: 110px; }
+  table.data-table th:nth-child(4),
+  table.data-table td:nth-child(4) { width: 100px; }
+  /* All 8 metric columns share an even slice */
+  table.data-table th:nth-child(n+5),
+  table.data-table td:nth-child(n+5) { width: 8.5%; }
   table.data-table thead th {
     background: var(--bg-2);
     color: var(--ink-2);
@@ -1192,11 +1205,19 @@
     transform: translateY(0.05em);
     filter: saturate(1.1);
     font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+    width: 1.4em;
+    text-align: center;
+    flex-shrink: 0;
   }
-  .tooltip-country .flag { margin-right: 8px; font-size: 18px; }
-  .summary-meta .flag { margin-right: 6px; font-size: 14px; }
-  .mover-row .flag { margin-right: 6px; font-size: 13px; }
-  td .flag { margin-right: 7px; font-size: 13px; }
+  .tooltip-country .flag { margin-right: 8px; font-size: 18px; width: 1.4em; }
+  .summary-meta .flag { margin-right: 6px; font-size: 14px; width: 1.4em; }
+  .mover-row .flag { margin-right: 6px; font-size: 13px; width: 1.4em; }
+  td .flag { margin-right: 7px; font-size: 13px; width: 1.4em; }
+  /* On Windows, flag emoji fall back to two text letters ("US", "IE")
+     which looks broken and breaks alignment. Hide them on this OS only. */
+  body.no-color-flags .flag {
+    display: none;
+  }
 
   /* ==================== TIMESTAMPS ==================== */
   .timestamps-row {
@@ -2885,6 +2906,13 @@ function wireEvents() {
 // BOOT
 // ============================================================
 (async function init() {
+  // Windows doesn't ship a colour emoji font for flags. Flag emoji fall back
+  // to two plain letters (US, GB, IE...) which looks broken and shifts table
+  // columns. Detect and hide flags entirely on Windows.
+  const isWindows = /Windows/i.test(navigator.userAgent) ||
+                    /Win(dows |32|64)/i.test(navigator.platform || '');
+  if (isWindows) document.body.classList.add('no-color-flags');
+
   // Show "Next Update" right away and tick the relative time once per minute
   updateNextScheduledDisplay();
   setInterval(updateNextScheduledDisplay, 60 * 1000);
