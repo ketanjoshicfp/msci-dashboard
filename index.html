@@ -2389,9 +2389,12 @@ function renderBarChart() {
       responsive: true,
       maintainAspectRatio: false,
       animation: { duration: 700, easing: 'easeOutQuart' },
+      // The `backgroundColor: { duration: 500 }` override here used to make
+      // hover state crash Chart.js v4 (tick → this._fn is not a function) because
+      // hoverBackgroundColor differs from backgroundColor and the colour interpolator
+      // wasn't being initialised. Bar-length tween is kept; colour swap is instant.
       animations: {
-        x: { duration: 700, easing: 'easeOutQuart' },
-        backgroundColor: { duration: 500 }
+        x: { duration: 700, easing: 'easeOutQuart' }
       },
       interaction: { mode: 'nearest', axis: 'y', intersect: false },
       hover: { mode: 'nearest', axis: 'y', intersect: false },
