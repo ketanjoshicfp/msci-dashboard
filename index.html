@@ -730,14 +730,14 @@
   table.data-table th:nth-child(1),
   table.data-table td:nth-child(1) { width: 48px; }
   table.data-table th:nth-child(2),
-  table.data-table td:nth-child(2) { width: 180px; }
+  table.data-table td:nth-child(2) { width: 170px; }
   table.data-table th:nth-child(3),
-  table.data-table td:nth-child(3) { width: 110px; }
+  table.data-table td:nth-child(3) { width: 130px; }
   table.data-table th:nth-child(4),
-  table.data-table td:nth-child(4) { width: 100px; }
+  table.data-table td:nth-child(4) { width: 120px; padding-right: 16px; }
   /* All 8 metric columns share an even slice */
   table.data-table th:nth-child(n+5),
-  table.data-table td:nth-child(n+5) { width: 8.5%; }
+  table.data-table td:nth-child(n+5) { width: 8.2%; }
   table.data-table thead th {
     background: var(--bg-2);
     color: var(--ink-2);
@@ -840,10 +840,11 @@
     font-family: var(--font-mono);
     font-size: 9px;
     text-transform: uppercase;
-    letter-spacing: 0.14em;
-    padding: 3px 8px;
+    letter-spacing: 0.12em;
+    padding: 3px 7px;
     border: 1px solid;
     border-radius: 2px;
+    white-space: nowrap;
   }
   .badge.dev { color: var(--accent); border-color: var(--accent-dim); }
   .badge.emerg { color: #6ea8fe; border-color: #3a5a99; }
