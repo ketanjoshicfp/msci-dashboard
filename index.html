@@ -933,7 +933,15 @@
     gap: 24px;
     transition: opacity 0.5s var(--ease-out);
   }
-  .loading-overlay.hidden { opacity: 0; pointer-events: none; }
+  .loading-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+    /* Cover both code paths: the opacity transition (preferred) AND a fallback in
+       case the transition is aborted by a concurrent layout — visibility flips
+       immediately, then the element is fully removed once the transition ends. */
+    transition: opacity 0.5s var(--ease-out), visibility 0s linear 0.5s;
+  }
   .loading-overlay .logo {
     font-family: var(--font-display);
     font-size: 32px;
@@ -1496,7 +1504,7 @@
   <section class="tab-panel" id="tab-compare">
     <div class="chart-card reveal">
       <h3>Country <em>Treemap</em></h3>
-      <div class="chart-meta" id="treemapMeta">Grouped by region · coloured by 1Y · click a country to inspect</div>
+      <div class="chart-meta" id="treemapMeta">Grouped by region · sized by |1Y| · coloured by 1Y · click to inspect</div>
       <div class="treemap-wrap">
         <svg id="treemap"></svg>
         <div class="tooltip" id="treemapTooltip"></div>
@@ -1779,7 +1787,7 @@ function formatRelativeFuture(targetDate) {
   if (totalDays === 1) return 'tomorrow';
   if (totalDays < 7) {
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    return `${dayNames[targetDate.getDay()]}`;
+    return `${dayNames[targetDate.getUTCDay()]}`;
   }
   return `in ${totalDays} days`;
 }
@@ -1914,7 +1922,7 @@ function updateMetricLabels() {
   document.getElementById('barChartMeta').textContent = `All visible markets · sorted by ${m}`;
   document.getElementById('histChartMeta').textContent = `Histogram · ${m} returns across visible markets`;
   const tmMeta = document.getElementById('treemapMeta');
-  if (tmMeta) tmMeta.textContent = `Grouped by region · coloured by ${m} · click a country to inspect`;
+  if (tmMeta) tmMeta.textContent = `Grouped by region · sized by |${m}| · coloured by ${m} · click to inspect`;
 }
 
 // ============================================================
@@ -2190,6 +2198,74 @@ function renderTable() {
   });
 }
 
+// Lighten any colour by +40 RGB units per channel, capped. Accepts '#RRGGBB' or 'rgb(r, g, b)'.
+function brighten(c, amt) {
+  amt = (typeof amt === 'number' && amt > 0) ? amt : 80;
+  let r, g, b;
+  let m = c.match(/^#([0-9a-f]{6})$/i);
+  if (m) {
+    const n = parseInt(m[1], 16);
+    r = (n >> 16) & 255; g = (n >> 8) & 255; b = n & 255;
+  } else {
+    m = c.match(/rgba?\(([^)]+)\)/);
+    if (!m) return c;
+    const parts = m[1].split(',').map(s => parseFloat(s.trim()));
+    r = parts[0]; g = parts[1]; b = parts[2];
+  }
+  return 'rgb(' + Math.min(255, r + amt) + ', ' + Math.min(255, g + amt) + ', ' + Math.min(255, b + amt) + ')';
+}
+
+// Chart.js plugin: paint a brass band + edge lines behind the actively-hovered
+// bar so the row/column highlight reads at a glance, not only via tooltip.
+const rowHighlightPlugin = {
+  id: 'rowHighlight',
+  beforeDatasetsDraw(chart) {
+    const active = chart.getActiveElements();
+    if (!active.length) return;
+    const ctx = chart.ctx;
+    const area = chart.chartArea;
+    const isHorizontal = chart.options.indexAxis === 'y';
+    active.forEach(a => {
+      const el = chart.getDatasetMeta(a.datasetIndex).data[a.index];
+      if (!el) return;
+      ctx.save();
+      if (isHorizontal) {
+        const rowH = (el.height || 9) + 14;
+        const y = el.y - rowH / 2;
+        // Fill band
+        ctx.fillStyle = 'rgba(202, 163, 114, 0.25)';
+        ctx.fillRect(area.left, y, area.right - area.left, rowH);
+        // Top + bottom edges
+        ctx.strokeStyle = 'rgba(202, 163, 114, 0.85)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(area.left, y + 0.5);
+        ctx.lineTo(area.right, y + 0.5);
+        ctx.moveTo(area.left, y + rowH - 0.5);
+        ctx.lineTo(area.right, y + rowH - 0.5);
+        ctx.stroke();
+      } else {
+        const colW = (el.width || 14) + 14;
+        const x = el.x - colW / 2;
+        ctx.fillStyle = 'rgba(202, 163, 114, 0.25)';
+        ctx.fillRect(x, area.top, colW, area.bottom - area.top);
+        ctx.strokeStyle = 'rgba(202, 163, 114, 0.85)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x + 0.5, area.top);
+        ctx.lineTo(x + 0.5, area.bottom);
+        ctx.moveTo(x + colW - 0.5, area.top);
+        ctx.lineTo(x + colW - 0.5, area.bottom);
+        ctx.stroke();
+      }
+      ctx.restore();
+    });
+  }
+};
+
+// Register globally so it applies to every chart created after this point.
+Chart.register(rowHighlightPlugin);
+
 // ============================================================
 // BAR CHART
 // ============================================================
@@ -2208,7 +2284,18 @@ function renderBarChart() {
 
   state.barChart = new Chart(ctx, {
     type: 'bar',
-    data: { labels, datasets: [{ data: values, backgroundColor: colors, borderColor: colors, borderWidth: 0, barThickness: 9 }] },
+    plugins: [rowHighlightPlugin],
+    data: { labels, datasets: [{
+      data: values,
+      backgroundColor: colors,
+      borderColor: colors,
+      borderWidth: 0,
+      barThickness: 9,
+      // Hover state — brass outline + brightened fill
+      hoverBackgroundColor: colors.map(brighten),
+      hoverBorderColor: '#caa372',
+      hoverBorderWidth: 4,
+    }] },
     options: {
       indexAxis: 'y',
       responsive: true,
@@ -2218,6 +2305,8 @@ function renderBarChart() {
         x: { duration: 700, easing: 'easeOutQuart' },
         backgroundColor: { duration: 500 }
       },
+      interaction: { mode: 'nearest', axis: 'y', intersect: false },
+      hover: { mode: 'nearest', axis: 'y', intersect: false },
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -2226,10 +2315,24 @@ function renderBarChart() {
           bodyColor: '#c9c4b8',
           borderColor: '#2d3548',
           borderWidth: 1,
-          padding: 10,
-          titleFont: { family: 'Inter', size: 13 },
+          padding: 14,
+          cornerRadius: 2,
+          titleFont: { family: 'Inter', size: 13, weight: '500' },
           bodyFont: { family: 'JetBrains Mono', size: 11 },
-          callbacks: { label: ctx => `${METRIC_SHORT[m]}: ${fmtPct(ctx.parsed.x)}` }
+          displayColors: false,
+          callbacks: {
+            title: ctx => ctx[0].label,
+            label: ctx => {
+              const country = ctx.label;
+              const rec = state.filtered.find(r => r.country === country);
+              const v = `${METRIC_SHORT[m]} ${fmtPct(ctx.parsed.x)}`;
+              return rec ? [v, `${rec.region} · ${rec.type}`] : v;
+            },
+            labelTextColor: ctx => {
+              const v = ctx.parsed.x;
+              return v >= 0 ? '#4ade80' : '#f87171';
+            }
+          }
         }
       },
       scales: {
@@ -2266,12 +2369,17 @@ function renderHistogram() {
   const bins = Array.from({ length: binCount }, (_, i) => {
     const lo = min + i * binWidth;
     const hi = lo + binWidth;
-    return { lo, hi, count: 0, mid: (lo + hi) / 2 };
+    return { lo, hi, count: 0, mid: (lo + hi) / 2, members: [] };
   });
-  values.forEach(v => {
+  state.filtered.forEach(d => {
+    const v = d[m];
+    if (!Number.isFinite(v)) return;
     let idx = Math.floor((v - min) / binWidth);
     if (idx === binCount) idx = binCount - 1;
-    if (idx >= 0) bins[idx].count++;
+    if (idx >= 0) {
+      bins[idx].count++;
+      bins[idx].members.push({ country: d.country, value: v, region: d.region, type: d.type });
+    }
   });
 
   const labels = bins.map(b => `${b.lo.toFixed(1)} – ${b.hi.toFixed(1)}`);
@@ -2282,11 +2390,22 @@ function renderHistogram() {
   const ctx = document.getElementById('histChart').getContext('2d');
   state.histChart = new Chart(ctx, {
     type: 'bar',
-    data: { labels, datasets: [{ data, backgroundColor: colors, borderColor: colors, borderWidth: 0 }] },
+    plugins: [rowHighlightPlugin],
+    data: { labels, datasets: [{
+      data,
+      backgroundColor: colors,
+      borderColor: colors,
+      borderWidth: 0,
+      hoverBackgroundColor: colors.map(brighten),
+      hoverBorderColor: '#caa372',
+      hoverBorderWidth: 4,
+    }] },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       animation: { duration: 700, easing: 'easeOutQuart' },
+      interaction: { mode: 'nearest', axis: 'x', intersect: false },
+      hover: { mode: 'nearest', axis: 'x', intersect: false },
       plugins: {
         legend: { display: false },
         tooltip: {
@@ -2295,11 +2414,38 @@ function renderHistogram() {
           bodyColor: '#c9c4b8',
           borderColor: '#2d3548',
           borderWidth: 1,
-          padding: 10,
+          padding: 14,
+          cornerRadius: 2,
           callbacks: {
-            title: ctx => `Range: ${ctx[0].label}%`,
-            label: ctx => `${ctx.parsed.y} ${ctx.parsed.y === 1 ? 'market' : 'markets'}`
-          }
+            title: ctx => {
+              const bin = bins[ctx[0].dataIndex];
+              if (!bin) return ctx[0].label;
+              return `${fmtPct(bin.lo)} to ${fmtPct(bin.hi)}`;
+            },
+            beforeBody: ctx => {
+              const bin = bins[ctx[0].dataIndex];
+              if (!bin) return '';
+              return `${bin.count} ${bin.count === 1 ? 'market' : 'markets'} in this band`;
+            },
+            label: () => null,
+            afterBody: ctx => {
+              const bin = bins[ctx[0].dataIndex];
+              if (!bin || bin.members.length === 0) return '';
+              // Sort within bucket descending, list up to 10 with their values
+              const sorted = [...bin.members].sort((a, b) => b.value - a.value);
+              const shown = sorted.slice(0, 10);
+              const lines = shown.map(c => {
+                // pad country name to align values
+                const v = (c.value >= 0 ? '+' : '−') + Math.abs(c.value).toFixed(2) + '%';
+                return `${c.country.padEnd(18, ' ')} ${v.padStart(8, ' ')}`;
+              });
+              if (sorted.length > 10) lines.push(`+ ${sorted.length - 10} more`);
+              return lines;
+            }
+          },
+          displayColors: false,
+          bodySpacing: 2,
+          titleSpacing: 4
         }
       },
       scales: {
@@ -2377,11 +2523,14 @@ function renderTreemap() {
     regionMap[d.region].push(d);
   });
 
-  // Build hierarchy with equal weight per country (so visual area = country count per region)
+  // Build hierarchy with cell size ∝ magnitude of return (|r|).
+  // Bigger movers (positive OR negative) get bigger cells; neutrals shrink to a floor.
+  // This makes the treemap a *performance* view, not a tally view.
+  const sizeFor = v => Math.max(Math.abs(v) + 0.6, 0.6);
   const root = d3.hierarchy({
     children: Object.entries(regionMap).map(([region, items]) => ({
       name: region,
-      children: items.map(d => ({ name: d.country, data: d, value: 1 }))
+      children: items.map(d => ({ name: d.country, data: d, value: sizeFor(d[m]) }))
     }))
   })
   .sum(d => d.value)
@@ -2682,7 +2831,7 @@ function setMetric(name) {
   if (state.metric === name) return;
   state.metric = name;
   // If sort key was the old metric, follow it to the new one
-  if (state.sort.key === 'oneYr' || ['day','mtd','threeMtd','ytd','threeYr','fiveYr','tenYr'].includes(state.sort.key)) {
+  if (['day','mtd','threeMtd','ytd','oneYr','threeYr','fiveYr','tenYr'].includes(state.sort.key)) {
     state.sort.key = name;
     state.sort.dir = 'desc';
   }
@@ -2701,7 +2850,15 @@ function showError(msg) {
   setTimeout(() => banner.classList.remove('visible'), 9000);
 }
 function setLoadingStatus(text) { document.getElementById('loadingStatus').textContent = text; }
-function hideLoader() { document.getElementById('loadingOverlay').classList.add('hidden'); }
+function hideLoader() {
+  const overlay = document.getElementById('loadingOverlay');
+  if (!overlay) return;
+  overlay.classList.add('hidden');
+  // Belt for the braces above: if the opacity transition is aborted by the
+  // render churn happening on the same tick, this still tears the overlay
+  // out of the layout once the transition window has elapsed.
+  setTimeout(() => { overlay.style.display = 'none'; }, 600);
+}
 
 function renderDataSourceBanner(meta) {
   const label = document.getElementById('dataSourceLabel');
