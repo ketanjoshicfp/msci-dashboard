@@ -54,6 +54,31 @@
   --neg-soft:   #2a1614;
   --neutral:    #232c3f;
 
+  /* Diverging heatmap scale (5-stop, canonical R→N→G) */
+  --div-1: #7d2120;   /* strong down  (≤ −2.0%) */
+  --div-2: #b34d3f;   /* down         (−2.0 .. −0.4) */
+  --div-3: #232c3f;   /* neutral      (−0.4 .. +0.4) */
+  --div-4: #468f63;   /* up           (+0.4 .. +2.0) */
+  --div-5: #1d6b3f;   /* strong up    (≥ +2.0%) */
+  --map-empty: #0e1622;  /* country fill when no data */
+
+  /* Chart-specific aliases (kept named for clarity in tooltip/grid options) */
+  --chart-tooltip-bg:     var(--bg-3);
+  --chart-tooltip-title:  var(--ink-0);
+  --chart-tooltip-body:   var(--ink-1);
+  --chart-tooltip-border: var(--line-3);
+  --chart-grid:           rgba(44, 54, 80, 0.35);   /* dark-mode grid lines */
+  --chart-axis-border:    var(--line-2);
+  --chart-tick-num:       var(--ink-3);
+  --chart-tick-cat:       var(--ink-2);
+
+  /* Emerging-markets badge (kept dimmer/cooler than the developed badge) */
+  --emerg-fg:     #7ab4e0;
+  --emerg-line:   #2f5879;
+
+  /* Theme transition — runs once on toggle, suppressed otherwise */
+  --theme-transition: none;
+
   /* Type */
   --font-display: 'Fraunces', Georgia, serif;
   --font-body:    'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
@@ -933,7 +958,7 @@ table.data-table tbody tr.focused-done {
   font-weight: 500;
 }
 .badge.dev   { color: var(--accent); border-color: var(--accent-dim); }
-.badge.emerg { color: #7ab4e0;       border-color: #2f5879; }
+.badge.emerg { color: var(--emerg-fg); border-color: var(--emerg-line); }
 
 .pct {
   display: inline-block;
@@ -1366,6 +1391,223 @@ body.no-color-flags .flag { display: none; }
   .brand-line .dot { animation: none !important; }
   body { animation: none !important; }
 }
+
+/* ============================================================
+   LIGHT THEME
+   The same Folio system, set on paper. Cream by default; the
+   `data-paper="neutral"` attribute swaps to a cooler off-white.
+   ============================================================ */
+[data-theme="light"] {
+  /* Surfaces — warm paper */
+  --bg-0:    #f6f3ed;     /* canvas (cream) */
+  --bg-1:    #fbf8f1;
+  --bg-2:    #ffffff;     /* cards lift off the cream canvas */
+  --bg-3:    #ffffff;     /* overlay / tooltip surface */
+  --bg-4:    #fdfbf5;
+  --bg-sunk: #ece6d5;     /* table head, sunken wells */
+  --line:    #ddd6c4;
+  --line-2:  #c4bba6;
+  --line-3:  #a8a08a;
+
+  /* Ink */
+  --ink-0: #0e1116;       /* display — near black */
+  --ink-1: #1f2329;       /* primary body */
+  --ink-2: #4a4d56;       /* secondary */
+  --ink-3: #76705c;       /* tertiary (warm) */
+  --ink-4: #a8a08a;       /* disabled */
+
+  /* Brand — deep brass on paper */
+  --accent:        #8a6a2e;
+  --accent-bright: #a37e3d;
+  --accent-dim:    #6b521f;
+  --accent-soft:   rgba(138, 106, 46, 0.10);
+
+  /* Semantic — darker green / red for paper contrast */
+  --pos:        #1c8a4e;
+  --pos-deep:   #0f5a30;
+  --pos-bright: #2ba85f;
+  --pos-soft:   rgba(28, 138, 78, 0.14);
+  --neg:        #b8362f;
+  --neg-deep:   #7a1f1a;
+  --neg-bright: #d54b42;
+  --neg-soft:   rgba(184, 54, 47, 0.10);
+  --neutral:    #ece6d5;
+
+  /* Diverging scale — paper-tuned */
+  --div-1: #7a1f1a;
+  --div-2: #d97058;
+  --div-3: #ece6d5;
+  --div-4: #6fae7e;
+  --div-5: #2a8a4f;
+  --map-empty: #e6e0ce;
+
+  /* Chart aliases — borders take the heavy lifting since shadows do less on paper */
+  --chart-tooltip-bg:     #ffffff;
+  --chart-tooltip-title:  var(--ink-0);
+  --chart-tooltip-body:   var(--ink-1);
+  --chart-tooltip-border: var(--line-2);
+  --chart-grid:           rgba(0, 0, 0, 0.06);
+  --chart-axis-border:    var(--line);
+  --chart-tick-num:       var(--ink-2);
+  --chart-tick-cat:       var(--ink-1);
+
+  /* EM badge stays a cool blue but darkens to read on white */
+  --emerg-fg:     #2c6aa8;
+  --emerg-line:   #9ab5d8;
+}
+
+/* Neutral off-white paper (Tweak variant) */
+[data-theme="light"][data-paper="neutral"] {
+  --bg-0:    #fafafa;
+  --bg-1:    #ffffff;
+  --bg-2:    #ffffff;
+  --bg-3:    #ffffff;
+  --bg-4:    #f5f5f5;
+  --bg-sunk: #efefef;
+  --line:    #e2e2e2;
+  --line-2:  #c8c8c8;
+  --line-3:  #9c9c9c;
+  --ink-3:   #6e6e6e;
+  --ink-4:   #a0a0a0;
+  --div-3:   #ededed;
+  --map-empty: #ededed;
+}
+
+/* Suppress the ambient drift gradient in light mode — looks muddy on paper */
+[data-theme="light"] body {
+  animation: none;
+  background-image:
+    radial-gradient(1200px 700px at 12% -8%, rgba(138, 106, 46, 0.05), transparent 60%),
+    radial-gradient(900px 600px at 110% 6%, rgba(28, 138, 78, 0.025), transparent 60%);
+}
+
+/* Shadows tuned for paper (lighter, smaller) */
+[data-theme="light"] .summary-card,
+[data-theme="light"] .movers-card,
+[data-theme="light"] .chart-card,
+[data-theme="light"] .map-wrap,
+[data-theme="light"] .table-wrap,
+[data-theme="light"] .insight-strip,
+[data-theme="light"] .stats-strip,
+[data-theme="light"] .summary-grid,
+[data-theme="light"] .filter-bar,
+[data-theme="light"] .metric-bar {
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+[data-theme="light"] .tooltip {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.10), 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+[data-theme="light"] .toast {
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.14);
+}
+[data-theme="light"] .loading-overlay {
+  background: rgba(246, 243, 237, 0.97);
+}
+/* Map ocean readable on cream */
+[data-theme="light"] #worldMap {
+  background:
+    radial-gradient(ellipse at 50% 40%, rgba(138, 106, 46, 0.04) 0%, transparent 60%),
+    var(--bg-sunk);
+}
+/* Map ocean — needs class to be theme-aware since SVG attr is set once */
+.worldmap-ocean { fill: var(--bg-sunk); }
+
+/* Light-mode tooltip — region eyebrow line darker for visibility */
+[data-theme="light"] .tooltip-region {
+  border-bottom-color: var(--line);
+}
+
+/* ============================================================
+   THEME TOGGLE BUTTON
+   ============================================================ */
+.theme-toggle {
+  width: 36px; height: 36px;
+  background: transparent;
+  border: 1px solid var(--line-2);
+  border-radius: 2px;
+  color: var(--ink-2);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: color var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out),
+              background var(--dur-fast) var(--ease-out);
+  flex-shrink: 0;
+}
+.theme-toggle:hover {
+  color: var(--accent);
+  border-color: var(--accent-dim);
+  background: var(--accent-soft);
+}
+.theme-toggle svg {
+  width: 16px; height: 16px;
+  display: block;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* Show "what clicking will switch TO". Dark mode shows sun (→ light); light shows moon. */
+.theme-toggle .icon-sun { display: block; }
+.theme-toggle .icon-moon { display: none; }
+[data-theme="light"] .theme-toggle .icon-sun { display: none; }
+[data-theme="light"] .theme-toggle .icon-moon { display: block; }
+
+/* ============================================================
+   ACTIVE-COLUMN PULSE (fires on metric change)
+   ============================================================ */
+@keyframes brass-pulse-th {
+  0%   { background: var(--accent); color: var(--bg-1); }
+  100% { background: var(--accent-soft); color: var(--accent); }
+}
+@keyframes brass-pulse-td {
+  0%   { background: rgba(202, 163, 114, 0.28); }
+  100% { background: var(--accent-soft); }
+}
+[data-theme="light"] @keyframes brass-pulse-td {
+  0%   { background: rgba(138, 106, 46, 0.22); }
+  100% { background: rgba(138, 106, 46, 0.08); }
+}
+table.data-table thead th.metric-active.pulsing {
+  animation: brass-pulse-th 1.2s var(--ease-emph);
+}
+table.data-table tbody td.metric-active.pulsing {
+  animation: brass-pulse-td 1.2s var(--ease-emph);
+}
+
+/* ============================================================
+   THEME TRANSITION (fires only when toggling, set + cleared in JS)
+   ============================================================ */
+html.theme-transitioning,
+html.theme-transitioning *,
+html.theme-transitioning *::before,
+html.theme-transitioning *::after {
+  transition: background-color 0.32s var(--ease-emph),
+              color 0.32s var(--ease-emph),
+              border-color 0.32s var(--ease-emph),
+              fill 0.32s var(--ease-emph),
+              stroke 0.32s var(--ease-emph),
+              box-shadow 0.32s var(--ease-emph) !important;
+}
+
+
+.header-actions-row {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 8px;
+}
+.header-actions-row .theme-toggle {
+  height: auto;   /* match the Refresh button's height exactly */
+  align-self: stretch;
+  width: 38px;
+}
+@media (max-width: 720px) {
+  .header-actions-row { width: 100%; }
+}
+
 </style>
 </head>
 <body>
@@ -1401,10 +1643,21 @@ body.no-color-flags .flag { display: none; }
           <div class="next-relative" id="nextUpdateRelative">&mdash;</div>
         </div>
       </div>
-      <button class="btn" id="refreshBtn">
-        <span class="spinner-icon"></span>
-        <span class="btn-label">Refresh Data</span>
-      </button>
+      <div class="header-actions-row">
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle light / dark theme" title="Switch theme">
+          <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="4"/>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+          </svg>
+          <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
+        <button class="btn" id="refreshBtn">
+          <span class="spinner-icon"></span>
+          <span class="btn-label">Refresh Data</span>
+        </button>
+      </div>
     </div>
   </header>
 
@@ -1922,9 +2175,20 @@ function setTweenedValue(el, value, formatter) {
 // COLOUR SCALE (auto-stretching, 5-stop diverging)
 // ============================================================
 function buildColorScale(values) {
+  // Diverging stops + empty-cell fill are read from CSS so light theme
+  // can swap the entire heatmap palette without touching JS.
+  const STOPS = {
+    s1: cssVar('div-1'),
+    s2: cssVar('div-2'),
+    s3: cssVar('div-3'),
+    s4: cssVar('div-4'),
+    s5: cssVar('div-5'),
+  };
+  const EMPTY = cssVar('map-empty') || '#0e1622';
+
   const valid = values.filter(v => v !== null && v !== undefined && Number.isFinite(v));
   if (valid.length === 0) {
-    return { fn: () => '#0e1622', min: 0, max: 0, hasZeroCross: false };
+    return { fn: () => EMPTY, min: 0, max: 0, hasZeroCross: false };
   }
   const min = Math.min(...valid);
   const max = Math.max(...valid);
@@ -1946,21 +2210,21 @@ function buildColorScale(values) {
     const range = Math.max(Math.abs(p5), Math.abs(p95));
     fn = d3.scaleLinear()
       .domain([-range, -range * 0.4, 0, range * 0.4, range])
-      .range(['#7d2120', '#b34d3f', '#232c3f', '#468f63', '#1d6b3f'])
+      .range([STOPS.s1, STOPS.s2, STOPS.s3, STOPS.s4, STOPS.s5])
       .interpolate(d3.interpolateRgb)
       .clamp(true);
   } else if (lo >= 0) {
     // All positive: green gradient
     fn = d3.scaleLinear()
       .domain([lo, (lo + hi) / 2, hi])
-      .range(['#232c3f', '#468f63', '#1d6b3f'])
+      .range([STOPS.s3, STOPS.s4, STOPS.s5])
       .interpolate(d3.interpolateRgb)
       .clamp(true);
   } else {
     // All negative: red gradient
     fn = d3.scaleLinear()
       .domain([lo, (lo + hi) / 2, hi])
-      .range(['#7d2120', '#b34d3f', '#232c3f'])
+      .range([STOPS.s1, STOPS.s2, STOPS.s3])
       .interpolate(d3.interpolateRgb)
       .clamp(true);
   }
@@ -2323,11 +2587,11 @@ const rowHighlightPlugin = {
       if (isHorizontal) {
         const rowH = (el.height || 9) + 14;
         const y = el.y - rowH / 2;
-        // Fill band
-        ctx.fillStyle = 'rgba(202, 163, 114, 0.25)';
+        // Fill band — accent read live so light mode picks up deep brass.
+        ctx.fillStyle = cssVarAlpha('accent', 0.20);
         ctx.fillRect(area.left, y, area.right - area.left, rowH);
         // Top + bottom edges
-        ctx.strokeStyle = 'rgba(202, 163, 114, 0.85)';
+        ctx.strokeStyle = cssVarAlpha('accent', 0.78);
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(area.left, y + 0.5);
@@ -2338,9 +2602,9 @@ const rowHighlightPlugin = {
       } else {
         const colW = (el.width || 14) + 14;
         const x = el.x - colW / 2;
-        ctx.fillStyle = 'rgba(202, 163, 114, 0.25)';
+        ctx.fillStyle = cssVarAlpha('accent', 0.20);
         ctx.fillRect(x, area.top, colW, area.bottom - area.top);
-        ctx.strokeStyle = 'rgba(202, 163, 114, 0.85)';
+        ctx.strokeStyle = cssVarAlpha('accent', 0.78);
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(x + 0.5, area.top);
@@ -2353,6 +2617,20 @@ const rowHighlightPlugin = {
     });
   }
 };
+
+// Read a CSS custom property at runtime.
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue('--' + name).trim();
+}
+// Read a CSS custom property and apply an alpha (for canvas fills/strokes
+// that need translucency — e.g. row-highlight band).
+function cssVarAlpha(name, alpha) {
+  const v = cssVar(name);
+  const m = v.match(/^#([0-9a-f]{6})$/i);
+  if (!m) return v;
+  const n = parseInt(m[1], 16);
+  return 'rgba(' + ((n >> 16) & 255) + ', ' + ((n >> 8) & 255) + ', ' + (n & 255) + ', ' + alpha + ')';
+}
 
 // ============================================================
 // BAR CHART
@@ -2381,7 +2659,7 @@ function renderBarChart() {
       barThickness: 9,
       // Hover state — brass outline + brightened fill
       hoverBackgroundColor: colors.map(brighten),
-      hoverBorderColor: '#caa372',
+      hoverBorderColor: cssVar('accent'),
       hoverBorderWidth: 4,
     }] },
     options: {
@@ -2401,10 +2679,10 @@ function renderBarChart() {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: '#1a2334',
-          titleColor: '#f3f1ea',
-          bodyColor: '#e6e9f1',
-          borderColor: '#4a5573',
+          backgroundColor: cssVar('chart-tooltip-bg'),
+          titleColor: cssVar('chart-tooltip-title'),
+          bodyColor: cssVar('chart-tooltip-body'),
+          borderColor: cssVar('chart-tooltip-border'),
           borderWidth: 1,
           padding: 14,
           cornerRadius: 2,
@@ -2421,21 +2699,21 @@ function renderBarChart() {
             },
             labelTextColor: ctx => {
               const v = ctx.parsed.x;
-              return v >= 0 ? '#4ec288' : '#e2655c';
+              return v >= 0 ? cssVar('pos') : cssVar('neg');
             }
           }
         }
       },
       scales: {
         x: {
-          grid: { color: 'rgba(44,54,80,0.35)', drawTicks: false },
-          ticks: { color: '#6e7689', font: { family: 'IBM Plex Mono', size: 10 }, callback: v => v + '%' },
-          border: { color: '#2c3650' }
+          grid: { color: cssVar('chart-grid'), drawTicks: false },
+          ticks: { color: cssVar('chart-tick-num'), font: { family: 'IBM Plex Mono', size: 10 }, callback: v => v + '%' },
+          border: { color: cssVar('chart-axis-border') }
         },
         y: {
           grid: { display: false },
-          ticks: { color: '#aab2c6', font: { family: 'IBM Plex Sans', size: 11 } },
-          border: { color: '#2c3650' }
+          ticks: { color: cssVar('chart-tick-cat'), font: { family: 'IBM Plex Sans', size: 11 } },
+          border: { color: cssVar('chart-axis-border') }
         }
       }
     }
@@ -2488,7 +2766,7 @@ function renderHistogram() {
       borderColor: colors,
       borderWidth: 0,
       hoverBackgroundColor: colors.map(brighten),
-      hoverBorderColor: '#caa372',
+      hoverBorderColor: cssVar('accent'),
       hoverBorderWidth: 4,
     }] },
     options: {
@@ -2500,10 +2778,10 @@ function renderHistogram() {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: '#1a2334',
-          titleColor: '#f3f1ea',
-          bodyColor: '#e6e9f1',
-          borderColor: '#4a5573',
+          backgroundColor: cssVar('chart-tooltip-bg'),
+          titleColor: cssVar('chart-tooltip-title'),
+          bodyColor: cssVar('chart-tooltip-body'),
+          borderColor: cssVar('chart-tooltip-border'),
           borderWidth: 1,
           padding: 14,
           cornerRadius: 2,
@@ -2542,13 +2820,13 @@ function renderHistogram() {
       scales: {
         x: {
           grid: { display: false },
-          ticks: { color: '#6e7689', font: { family: 'IBM Plex Mono', size: 9 }, maxRotation: 40, minRotation: 40 },
-          border: { color: '#2c3650' }
+          ticks: { color: cssVar('chart-tick-num'), font: { family: 'IBM Plex Mono', size: 9 }, maxRotation: 40, minRotation: 40 },
+          border: { color: cssVar('chart-axis-border') }
         },
         y: {
-          grid: { color: 'rgba(44,54,80,0.35)' },
-          ticks: { color: '#6e7689', font: { family: 'IBM Plex Mono', size: 10 }, stepSize: 1, precision: 0 },
-          border: { color: '#2c3650' }
+          grid: { color: cssVar('chart-grid') },
+          ticks: { color: cssVar('chart-tick-num'), font: { family: 'IBM Plex Mono', size: 10 }, stepSize: 1, precision: 0 },
+          border: { color: cssVar('chart-axis-border') }
         }
       }
     }
@@ -2754,9 +3032,10 @@ async function initMap() {
     .translate([width / 2, height / 1.85]);
   state.path = d3.geoPath().projection(state.projection);
 
+  // Ocean — fill set via CSS so theme changes propagate.
   svg.append('path')
+    .attr('class', 'worldmap-ocean')
     .attr('d', state.path({ type: 'Sphere' }))
-    .attr('fill', '#060a12')
     .attr('stroke', 'none');
 
   const g = svg.append('g');
@@ -2817,7 +3096,7 @@ function updateMapColors() {
       if (record && Number.isFinite(record[m])) {
         return state.colorScale.fn(record[m]);
       }
-      return '#0e1622';
+      return cssVar('map-empty') || '#0e1622';
     });
 }
 
@@ -2929,6 +3208,16 @@ function setMetric(name) {
   document.querySelectorAll('#globalMetric button').forEach(b =>
     b.classList.toggle('active', b.dataset.metric === name));
   renderAll();
+  // Brass-pulse the newly-active column in the table so the change registers
+  // visually even when the user is scrolled to the Markets tab.
+  requestAnimationFrame(() => {
+    const cells = document.querySelectorAll('#dataTable .metric-active');
+    cells.forEach(c => c.classList.remove('pulsing'));
+    // Force reflow so the animation restarts cleanly
+    void document.body.offsetHeight;
+    cells.forEach(c => c.classList.add('pulsing'));
+    setTimeout(() => cells.forEach(c => c.classList.remove('pulsing')), 1400);
+  });
 }
 
 // ============================================================
@@ -3058,6 +3347,10 @@ async function loadAndRender({ force = false } = {}) {
 // EVENTS
 // ============================================================
 function wireEvents() {
+  // Theme toggle
+  const themeBtn = document.getElementById('themeToggle');
+  if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
+
   // Refresh
   document.getElementById('refreshBtn').addEventListener('click', () => loadAndRender({ force: true }));
 
@@ -3158,7 +3451,78 @@ function wireEvents() {
 // ============================================================
 // BOOT
 // ============================================================
+// ============================================================
+// THEME (light / dark)
+// ============================================================
+const THEME_STORAGE_KEY = 'msci-folio-theme';
+const PAPER_STORAGE_KEY = 'msci-folio-paper';
+
+function pickInitialTheme() {
+  // 1) URL param ?theme=light|dark — explicit, wins over everything else
+  //    (for sharing a screenshot in a particular theme).
+  const params = new URLSearchParams(window.location.search);
+  const urlTheme = params.get('theme');
+  if (urlTheme === 'light' || urlTheme === 'dark') return { theme: urlTheme, source: 'url' };
+
+  // 2) Saved preference (set last time the user clicked the toggle).
+  const saved = localStorage.getItem(THEME_STORAGE_KEY);
+  if (saved === 'light' || saved === 'dark') return { theme: saved, source: 'stored' };
+
+  // 3) Time-of-day fallback (auto-switch). Light 06:00–17:59 local, dark otherwise.
+  const hour = new Date().getHours();
+  const auto = (hour >= 6 && hour < 18) ? 'light' : 'dark';
+  return { theme: auto, source: 'auto' };
+}
+
+function applyTheme(theme, { transition = false } = {}) {
+  const root = document.documentElement;
+  if (transition) {
+    root.classList.add('theme-transitioning');
+    setTimeout(() => root.classList.remove('theme-transitioning'), 360);
+  }
+  if (theme === 'light') {
+    root.setAttribute('data-theme', 'light');
+  } else {
+    root.removeAttribute('data-theme');
+  }
+  // Re-render every dynamic block — charts pick up new tooltip / axis colours,
+  // map redraws with new ocean + heatmap stops, table picks up new badges.
+  if (window.state && window.state.data && window.state.data.length) {
+    renderAll();
+  }
+}
+
+function applyPaper(paper) {
+  const root = document.documentElement;
+  if (paper === 'neutral') {
+    root.setAttribute('data-paper', 'neutral');
+  } else {
+    root.removeAttribute('data-paper');
+  }
+  if (window.state && window.state.data && window.state.data.length) renderAll();
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+  const next = current === 'light' ? 'dark' : 'light';
+  localStorage.setItem(THEME_STORAGE_KEY, next);
+  applyTheme(next, { transition: true });
+  // Toast feedback — quiet confirmation
+  showToast({
+    label: next === 'light' ? 'Light mode' : 'Dark mode',
+    message: next === 'light' ? 'Switched to paper.' : 'Switched to ink.',
+    sub: 'Press the icon again to flip back.',
+    duration: 2400
+  });
+}
+
 (async function init() {
+  // Theme must be set BEFORE first paint so we don't flash dark → light.
+  const initial = pickInitialTheme();
+  applyTheme(initial.theme);
+  const savedPaper = localStorage.getItem(PAPER_STORAGE_KEY);
+  if (savedPaper === 'neutral') applyPaper('neutral');
+
   // Windows doesn't ship a colour emoji font for flags. Flag emoji fall back
   // to two plain letters (US, GB, IE...) which looks broken and shifts table
   // columns. Detect and hide flags entirely on Windows.
