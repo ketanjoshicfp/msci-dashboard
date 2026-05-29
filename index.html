@@ -12,6 +12,8 @@
 <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/date-fns@3.6.0/cdn.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 
 <style>
 /* ============================================================
@@ -267,6 +269,27 @@ button.btn.loading .spinner-icon {
   letter-spacing: 0.1em;
   font-size: 11px;
 }
+.info-banner.warn {
+  background: rgba(226, 174, 92, 0.12);
+  border-left-color: #d2a05a;
+}
+.info-banner.warn strong { color: #d2a05a; }
+.banner-chip {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.banner-chip.pos { background: rgba(74, 175, 122, 0.14); color: var(--pos); }
+.banner-chip.warn { background: rgba(210, 160, 90, 0.18); color: #c08a3d; }
+[data-theme="light"] .banner-chip.pos { background: rgba(70, 130, 78, 0.16); }
+[data-theme="light"] .banner-chip.warn { background: rgba(180, 130, 60, 0.18); }
 
 .error-banner {
   background: rgba(226,101,92,0.08);
@@ -378,6 +401,23 @@ input[type="range"] {
   flex: 1;
   accent-color: var(--accent);
 }
+
+/* Dual-range filter (Phase 3.5) — two sliders stacked, sharing one track region */
+.dual-range-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  height: 38px;
+  justify-content: center;
+}
+.dual-range-wrap input[type="range"] {
+  width: 100%;
+  margin: 0;
+}
+.filter-group.dual-range-group { min-width: 180px; }
+.filter-group.export-group label { visibility: hidden; }
+.filter-group .scatter-select { padding: 8px 10px; }
 
 /* ==================== METRIC SELECTOR ==================== */
 .metric-bar {
@@ -651,6 +691,23 @@ input[type="range"] {
   stroke-width: 1.4;
 }
 
+/* Small-market overlay markers — Singapore, Hong Kong, Qatar, UAE … */
+circle.small-market {
+  fill: var(--bg-3);
+  stroke: var(--bg-0);
+  stroke-width: 1.2;
+  transition: filter var(--dur-fast) var(--ease-out),
+              stroke var(--dur-fast) var(--ease-out),
+              stroke-width var(--dur-fast) var(--ease-out),
+              r var(--dur-fast) var(--ease-out);
+}
+circle.small-market.has-data { cursor: pointer; }
+circle.small-market:hover {
+  filter: brightness(1.35);
+  stroke: var(--accent);
+  stroke-width: 2;
+}
+
 .map-legend {
   position: absolute;
   left: 20px; bottom: 20px;
@@ -735,6 +792,12 @@ input[type="range"] {
 .tooltip-row .val.pos { color: var(--pos); }
 .tooltip-row .val.neg { color: var(--neg); }
 .tooltip-row .val.muted { color: var(--ink-4); }
+.tooltip-sparkline {
+  margin: 6px 0 4px;
+  padding: 4px 0 6px;
+  border-bottom: 1px dashed var(--line-2);
+}
+.tooltip-sparkline svg.sparkline { width: 100%; height: 28px; }
 
 /* ==================== TOP MOVERS ==================== */
 .movers-grid {
@@ -835,10 +898,39 @@ table.data-table {
   table-layout: fixed;
 }
 table.data-table th:nth-child(1), table.data-table td:nth-child(1) { width: 46px; }
-table.data-table th:nth-child(2), table.data-table td:nth-child(2) { width: 170px; }
+table.data-table th:nth-child(2), table.data-table td:nth-child(2) { width: 196px; }
 table.data-table th:nth-child(3), table.data-table td:nth-child(3) { width: 140px; padding-right: 18px; }
 table.data-table th:nth-child(4), table.data-table td:nth-child(4) { width: 110px; padding-right: 14px; }
-table.data-table th:nth-child(n+5), table.data-table td:nth-child(n+5) { width: 75px; }
+table.data-table th:nth-child(n+5):not(.trend-col), table.data-table td:nth-child(n+5):not(.trend-cell) { width: 75px; }
+table.data-table th.trend-col, table.data-table td.trend-cell {
+  width: 110px;
+  text-align: center;
+  padding-left: 6px;
+  padding-right: 12px;
+  cursor: default;
+}
+table.data-table td.trend-cell svg.sparkline { vertical-align: middle; display: inline-block; }
+table.data-table td.trend-cell svg.sparkline-empty { opacity: 0.35; }
+table.data-table th.trend-col { text-align: center; cursor: default; }
+
+/* Favourite-star toggle in the country cell */
+button.fav-toggle {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0 8px 0 -2px;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--ink-3);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  font-family: inherit;
+  vertical-align: middle;
+}
+button.fav-toggle:hover { color: var(--accent); transform: scale(1.18); }
+button.fav-toggle.active { color: var(--accent); }
+button.fav-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
 
 table.data-table thead th {
   background: var(--bg-sunk);
@@ -1031,6 +1123,211 @@ table.data-table tbody tr.focused-done {
 }
 .chart-canvas-wrap { position: relative; height: 700px; }
 .chart-canvas-wrap.short { height: 340px; }
+
+/* Accessibility helpers (Phase 3.8) */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  margin: -1px; padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+table.data-table tbody tr:focus { background: var(--accent-soft); outline: none; }
+table.data-table tbody tr:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* Overnight delta chip (Phase 2.4) — small inline change indicator */
+.delta-chip {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.delta-chip.pos { color: var(--pos); background: rgba(74, 175, 122, 0.10); }
+.delta-chip.neg { color: var(--neg); background: rgba(220, 80, 80, 0.10); }
+[data-theme="light"] .delta-chip.pos { background: rgba(70, 130, 78, 0.12); }
+[data-theme="light"] .delta-chip.neg { background: rgba(180, 70, 70, 0.12); }
+
+/* ==================== COUNTRY DETAIL DRAWER (Phase 2.3) ==================== */
+.drawer-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, 0.42);
+  opacity: 0;
+  transition: opacity 0.2s var(--ease-out);
+  z-index: 998;
+  pointer-events: none;
+}
+.drawer-backdrop.visible { opacity: 1; pointer-events: auto; }
+.detail-drawer {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: min(420px, 96vw);
+  background: var(--bg-1);
+  border-left: 1px solid var(--line-2);
+  box-shadow: -16px 0 40px rgba(0, 0, 0, 0.32);
+  padding: 28px 26px 32px;
+  z-index: 999;
+  overflow-y: auto;
+  transform: translateX(100%);
+  transition: transform 0.32s var(--ease-emph);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.detail-drawer.open { transform: translateX(0); }
+.drawer-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.drawer-title-wrap { display: flex; align-items: center; gap: 12px; }
+.drawer-flag { font-size: 28px; line-height: 1; }
+.drawer-title {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 400;
+  margin: 0;
+  color: var(--ink-0);
+  letter-spacing: -0.01em;
+}
+.drawer-close {
+  background: transparent;
+  border: 1px solid var(--line-2);
+  color: var(--ink-2);
+  width: 32px; height: 32px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  font-family: inherit;
+  transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+.drawer-close:hover { color: var(--accent); border-color: var(--accent-dim); }
+.drawer-region {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+.drawer-section { display: flex; flex-direction: column; gap: 10px; }
+.drawer-section-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink-3);
+}
+.drawer-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+}
+.drawer-metric {
+  background: var(--bg-1);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.drawer-metric-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+.drawer-metric-value {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.drawer-metric-value.pos { color: var(--pos); }
+.drawer-metric-value.neg { color: var(--neg); }
+.drawer-metric-value.muted { color: var(--ink-4); }
+.drawer-chart-wrap { position: relative; height: 200px; }
+.drawer-rank {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-2);
+  line-height: 1.6;
+}
+.drawer-rank em { font-style: normal; color: var(--accent); font-weight: 500; }
+@media (max-width: 720px) {
+  .detail-drawer { padding: 20px 18px 28px; }
+  .drawer-title { font-size: 22px; }
+}
+
+/* ==================== COMPARE TAB CONTROLS ==================== */
+.comparison-controls,
+.scatter-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 22px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.comparison-controls .comparison-pickers { flex: 1 1 380px; min-width: 240px; }
+.comparison-controls .comparison-windows { flex: 0 0 auto; }
+.comparison-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink-3);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+.comparison-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  max-height: 130px;
+  overflow-y: auto;
+  padding: 4px;
+  border: 1px dashed var(--line-2);
+  border-radius: 2px;
+  background: var(--bg-sunk);
+}
+.comparison-chips .chip {
+  font-size: 11px;
+  padding: 4px 10px;
+}
+.scatter-controls .scatter-select {
+  background: var(--bg-sunk);
+  color: var(--ink-1);
+  border: 1px solid var(--line-2);
+  border-radius: 2px;
+  padding: 6px 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  cursor: pointer;
+}
+.scatter-controls .scatter-select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.scatter-controls .comparison-label { margin: 0; align-self: center; }
 
 /* ==================== LOADING ==================== */
 .loading-overlay {
@@ -1556,6 +1853,15 @@ body.no-color-flags .flag { display: none; }
 [data-theme="light"] .theme-toggle .icon-sun { display: none; }
 [data-theme="light"] .theme-toggle .icon-moon { display: block; }
 
+/* Paper-tone toggle: cream ↔ neutral, only meaningful in light mode. */
+.paper-toggle { display: none; }
+[data-theme="light"] .paper-toggle { display: inline-flex; }
+.paper-toggle.active {
+  color: var(--accent);
+  border-color: var(--accent-dim);
+  background: var(--accent-soft);
+}
+
 /* ============================================================
    ACTIVE-COLUMN PULSE (fires on metric change)
    ============================================================ */
@@ -1653,6 +1959,13 @@ html.theme-transitioning *::after {
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
           </svg>
         </button>
+        <button class="theme-toggle paper-toggle" id="paperToggle" aria-label="Toggle paper tone (cream / neutral)" title="Toggle paper tone">
+          <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 3h9l4 4v14H6z"/>
+            <path d="M15 3v4h4"/>
+            <path d="M9 12h7M9 16h5"/>
+          </svg>
+        </button>
         <button class="btn" id="refreshBtn">
           <span class="spinner-icon"></span>
           <span class="btn-label">Refresh Data</span>
@@ -1691,9 +2004,41 @@ html.theme-transitioning *::after {
       </div>
     </div>
     <div class="filter-group">
-      <label>Min Return: <span class="perf-range-display" id="perfRangeLabel">≥ -100%</span></label>
-      <div class="range-slider-wrap">
-        <input type="range" id="perfRange" min="-100" max="100" value="-100" step="1" />
+      <label>Favourites</label>
+      <div class="chip-row" id="favChips">
+        <button class="chip active" data-value="all">All</button>
+        <button class="chip" data-value="favs">★ Only</button>
+      </div>
+    </div>
+    <div class="filter-group">
+      <label>Filter by metric</label>
+      <select id="filterMetric" class="scatter-select">
+        <option value="__active__" selected>Active metric</option>
+        <option value="day">1D</option>
+        <option value="mtd">MTD</option>
+        <option value="threeMtd">3MTD</option>
+        <option value="sixMtd">6M</option>
+        <option value="ytd">YTD</option>
+        <option value="oneYr">1Y</option>
+        <option value="threeYr">3Y</option>
+        <option value="fiveYr">5Y</option>
+        <option value="tenYr">10Y</option>
+        <option value="vol1Y">Vol 1Y</option>
+        <option value="maxDd1Y">Max DD 1Y</option>
+      </select>
+    </div>
+    <div class="filter-group dual-range-group">
+      <label>Return range: <span class="perf-range-display" id="perfRangeLabel">−100% … +100%</span></label>
+      <div class="dual-range-wrap">
+        <input type="range" id="perfRangeMin" min="-100" max="100" value="-100" step="1" />
+        <input type="range" id="perfRangeMax" min="-100" max="100" value="100" step="1" />
+      </div>
+    </div>
+    <div class="filter-group export-group">
+      <label>Export</label>
+      <div class="chip-row">
+        <button class="chip" id="exportCsvBtn" type="button" title="Download visible markets as CSV">CSV</button>
+        <button class="chip" id="exportPngBtn" type="button" title="Download a PNG of the current charts">PNG</button>
       </div>
     </div>
   </div>
@@ -1757,9 +2102,9 @@ html.theme-transitioning *::after {
     </div>
     <div class="map-wrap reveal">
       <div class="map-controls">
-        <button id="zoomIn" title="Zoom in">+</button>
-        <button id="zoomOut" title="Zoom out">&minus;</button>
-        <button id="zoomReset" title="Reset">⟲</button>
+        <button id="zoomIn" title="Zoom in" aria-label="Zoom map in">+</button>
+        <button id="zoomOut" title="Zoom out" aria-label="Zoom map out">&minus;</button>
+        <button id="zoomReset" title="Reset" aria-label="Reset map zoom">⟲</button>
       </div>
       <svg id="worldMap"></svg>
       <div class="map-legend">
@@ -1837,6 +2182,7 @@ html.theme-transitioning *::after {
             <th data-key="threeYr" class="num">3Y %</th>
             <th data-key="fiveYr" class="num">5Y %</th>
             <th data-key="tenYr" class="num">10Y %</th>
+            <th data-key="trend" class="trend-col">Trend</th>
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>
@@ -1846,6 +2192,70 @@ html.theme-transitioning *::after {
 
   <!-- ===== TAB: COMPARE ===== -->
   <section class="tab-panel" id="tab-compare">
+    <div class="chart-card reveal">
+      <h3>Side-by-side <em>Comparison</em></h3>
+      <div class="chart-meta" id="comparisonMeta">Pick 2–5 markets — chart plots the active metric's history.</div>
+      <div class="comparison-controls">
+        <div class="comparison-pickers">
+          <label class="comparison-label">Markets</label>
+          <div class="comparison-chips" id="comparisonChips"></div>
+        </div>
+        <div class="comparison-windows">
+          <label class="comparison-label">Window</label>
+          <div class="chip-row" id="comparisonWindow">
+            <button class="chip" data-window="3M">3M</button>
+            <button class="chip active" data-window="6M">6M</button>
+            <button class="chip" data-window="1Y">1Y</button>
+            <button class="chip" data-window="MAX">Max</button>
+          </div>
+        </div>
+      </div>
+      <div class="chart-canvas-wrap" style="height: 420px;">
+        <canvas id="comparisonChart"></canvas>
+      </div>
+    </div>
+    <div class="chart-card reveal">
+      <h3>Momentum <em>Scatter</em></h3>
+      <div class="chart-meta" id="scatterMeta">Each point is a visible market — one metric on each axis.</div>
+      <div class="scatter-controls">
+        <label class="comparison-label">X axis</label>
+        <select id="scatterX" class="scatter-select">
+          <option value="day">1D</option>
+          <option value="mtd">MTD</option>
+          <option value="threeMtd">3MTD</option>
+          <option value="sixMtd">6M</option>
+          <option value="ytd" selected>YTD</option>
+          <option value="oneYr">1Y</option>
+          <option value="threeYr">3Y</option>
+          <option value="fiveYr">5Y</option>
+          <option value="tenYr">10Y</option>
+          <option value="vol1Y">Vol 1Y</option>
+          <option value="maxDd1Y">Max DD 1Y</option>
+        </select>
+        <label class="comparison-label">Y axis</label>
+        <select id="scatterY" class="scatter-select">
+          <option value="day">1D</option>
+          <option value="mtd">MTD</option>
+          <option value="threeMtd">3MTD</option>
+          <option value="sixMtd">6M</option>
+          <option value="ytd">YTD</option>
+          <option value="oneYr" selected>1Y</option>
+          <option value="threeYr">3Y</option>
+          <option value="fiveYr">5Y</option>
+          <option value="tenYr">10Y</option>
+          <option value="vol1Y">Vol 1Y</option>
+          <option value="maxDd1Y">Max DD 1Y</option>
+        </select>
+        <label class="comparison-label">Colour by</label>
+        <select id="scatterColor" class="scatter-select">
+          <option value="region" selected>Region</option>
+          <option value="type">Type</option>
+        </select>
+      </div>
+      <div class="chart-canvas-wrap" style="height: 380px;">
+        <canvas id="scatterChart"></canvas>
+      </div>
+    </div>
     <div class="chart-card reveal">
       <h3>Country <em>Treemap</em></h3>
       <div class="chart-meta" id="treemapMeta">Grouped by region · sized by |1Y| · coloured by 1Y · click to inspect</div>
@@ -1858,15 +2268,17 @@ html.theme-transitioning *::after {
       <h3>Performance <em>Ranking</em></h3>
       <div class="chart-meta" id="barChartMeta">All visible markets · sorted by 1Y</div>
       <div class="chart-canvas-wrap">
-        <canvas id="barChart"></canvas>
+        <canvas id="barChart" role="img" aria-label="Horizontal bar chart of country returns"></canvas>
       </div>
+      <p class="sr-only" id="barChartA11y" aria-live="polite"></p>
     </div>
     <div class="chart-card reveal">
       <h3>Return <em>Distribution</em></h3>
       <div class="chart-meta" id="histChartMeta">Histogram · 1Y returns across visible markets</div>
       <div class="chart-canvas-wrap short">
-        <canvas id="histChart"></canvas>
+        <canvas id="histChart" role="img" aria-label="Histogram of country returns"></canvas>
       </div>
+      <p class="sr-only" id="histChartA11y" aria-live="polite"></p>
     </div>
   </section>
 
@@ -1877,6 +2289,33 @@ html.theme-transitioning *::after {
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- Country detail drawer (Phase 2.3) -->
+<div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
+<aside class="detail-drawer" id="detailDrawer" hidden role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+  <header class="drawer-header">
+    <div class="drawer-title-wrap">
+      <span class="drawer-flag" id="drawerFlag" aria-hidden="true"></span>
+      <h2 class="drawer-title" id="drawerTitle">—</h2>
+    </div>
+    <button class="drawer-close" id="drawerClose" aria-label="Close country details" type="button">×</button>
+  </header>
+  <div class="drawer-region" id="drawerRegion">—</div>
+  <div class="drawer-section">
+    <div class="drawer-section-label">All metrics</div>
+    <div class="drawer-metrics" id="drawerMetrics"></div>
+  </div>
+  <div class="drawer-section">
+    <div class="drawer-section-label" id="drawerHistoryLabel">History</div>
+    <div class="drawer-chart-wrap">
+      <canvas id="drawerChart"></canvas>
+    </div>
+  </div>
+  <div class="drawer-section">
+    <div class="drawer-section-label">Rank</div>
+    <div class="drawer-rank" id="drawerRank"></div>
+  </div>
+</aside>
 
 <script>
 /* ============================================================
@@ -1973,15 +2412,19 @@ const METRIC_LABELS = {
   day:      '1D',
   mtd:      'MTD',
   threeMtd: '3MTD',
+  sixMtd:   '6M',
   ytd:      'YTD',
   oneYr:    '1Y',
   threeYr:  '3Y (ann.)',
   fiveYr:   '5Y (ann.)',
-  tenYr:    '10Y (ann.)'
+  tenYr:    '10Y (ann.)',
+  vol1Y:    'Vol 1Y (ann.)',
+  maxDd1Y:  'Max DD 1Y'
 };
 const METRIC_SHORT = {
-  day: '1D', mtd: 'MTD', threeMtd: '3MTD', ytd: 'YTD',
-  oneYr: '1Y', threeYr: '3Y', fiveYr: '5Y', tenYr: '10Y'
+  day: '1D', mtd: 'MTD', threeMtd: '3MTD', sixMtd: '6M', ytd: 'YTD',
+  oneYr: '1Y', threeYr: '3Y', fiveYr: '5Y', tenYr: '10Y',
+  vol1Y: 'Vol', maxDd1Y: 'MaxDD'
 };
 
 // ---------- STATE ----------
@@ -1991,13 +2434,26 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 const state = {
   data: [],
   filtered: [],
-  filters: { search: '', region: 'all', type: 'all', minPerf: -100 },
+  filters: {
+    search: '', region: 'all', type: 'all',
+    minPerf: -100, maxPerf: 100,
+    filterMetric: '__active__',  // '__active__' means filter on state.metric
+    favsOnly: false
+  },
   metric: 'oneYr',
   sort: { key: 'oneYr', dir: 'desc' },
   activeTab: 'overview',
   zoom: null, svg: null, g: null, projection: null, path: null, topo: null,
   barChart: null, histChart: null,
   colorScale: null,
+  history: null,            // { schemaVersion, lastUpdated, series: {country: [{d,...}]} }
+  historyPromise: null,     // de-dupes concurrent loads
+  favourites: new Set(),
+  comparisonCountries: ['USA', 'Japan', 'India'],
+  comparisonWindow: '6M',
+  comparisonChart: null,
+  scatterChart: null,
+  scatterAxes: { x: 'ytd', y: 'oneYr', color: 'region' },
 };
 
 // ============================================================
@@ -2017,11 +2473,14 @@ async function fetchMarketData() {
       day:      d.day,
       mtd:      d.mtd,
       threeMtd: d.threeMtd,
+      sixMtd:   d.sixMtd ?? null,
       ytd:      d.ytd,
       oneYr:    d.oneYr,
       threeYr:  d.threeYr,
       fiveYr:   d.fiveYr,
       tenYr:    d.tenYr,
+      vol1Y:    d.vol1Y ?? null,
+      maxDd1Y:  d.maxDd1Y ?? null,
       region:   d.region || (COUNTRY_META[d.country]?.region) || 'Other',
       type:     d.type   || (COUNTRY_META[d.country]?.type)   || 'Developed'
     })),
@@ -2048,6 +2507,160 @@ function loadCache() {
 function saveCache(data) {
   try { localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); }
   catch (e) { console.warn('Cache save failed:', e); }
+}
+
+// History (data/history.json) — lazy-loaded the first time the user opens the
+// Compare tab, a country drawer, or anything else that wants per-country series.
+const HISTORY_URL = `https://raw.githubusercontent.com/${CONFIG.githubUser}/${CONFIG.githubRepo}/${CONFIG.branch}/data/history.json`;
+const HISTORY_CACHE_KEY = 'msci_dashboard_history_v1';
+const HISTORY_CACHE_TTL_MS = 12 * 60 * 60 * 1000;  // 12h
+
+function loadHistoryCache() {
+  try {
+    const raw = localStorage.getItem(HISTORY_CACHE_KEY);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (!obj || Date.now() - obj.ts > HISTORY_CACHE_TTL_MS) return null;
+    return obj.data;
+  } catch (e) { return null; }
+}
+function saveHistoryCache(data) {
+  try { localStorage.setItem(HISTORY_CACHE_KEY, JSON.stringify({ ts: Date.now(), data })); }
+  catch (e) { /* quota — silent */ }
+}
+
+async function fetchHistory({ force = false } = {}) {
+  if (state.history && !force) return state.history;
+  if (state.historyPromise && !force) return state.historyPromise;
+
+  const promise = (async () => {
+    if (!force) {
+      const cached = loadHistoryCache();
+      if (cached && cached.series) {
+        state.history = cached;
+        return cached;
+      }
+    }
+    try {
+      const url = `${HISTORY_URL}?t=${Date.now()}`;
+      const resp = await fetch(url, { cache: 'no-store' });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status} fetching ${url}`);
+      const payload = await resp.json();
+      if (!payload || typeof payload !== 'object' || !payload.series) {
+        throw new Error('Malformed history.json');
+      }
+      state.history = payload;
+      saveHistoryCache(payload);
+      return payload;
+    } catch (e) {
+      console.warn('History load failed:', e);
+      // Degrade gracefully — UI guards on state.history being null.
+      state.history = { schemaVersion: 0, series: {} };
+      return state.history;
+    } finally {
+      state.historyPromise = null;
+    }
+  })();
+
+  state.historyPromise = promise;
+  return promise;
+}
+
+function getCountryHistory(country) {
+  if (!state.history || !state.history.series) return [];
+  return state.history.series[country] || [];
+}
+
+// Day-over-day delta for the active metric, derived from history.
+// Returns null when we lack two valid points to compare.
+function dayDelta(country, metric) {
+  const points = getCountryHistory(country).filter(p => Number.isFinite(p[metric]));
+  if (points.length < 2) return null;
+  return Math.round((points[points.length - 1][metric] - points[points.length - 2][metric]) * 100) / 100;
+}
+
+// Small ▲/▼ chip rendered inline next to a metric value when history is loaded.
+// Returns '' (no markup) when no delta is available so the caller's layout
+// doesn't shift before history lands.
+function deltaChip(country, metric, opts = {}) {
+  const { compact = false } = opts;
+  const d = dayDelta(country, metric);
+  if (d === null || !isFinite(d) || d === 0) return '';
+  const cls = d > 0 ? 'pos' : 'neg';
+  const arrow = d > 0 ? '▲' : '▼';
+  const text = compact
+    ? `${arrow} ${Math.abs(d).toFixed(2)}`
+    : `${arrow} ${Math.abs(d).toFixed(2)}%`;
+  return `<span class="delta-chip ${cls}" title="Change since previous scrape">${text}</span>`;
+}
+
+// Build a small inline SVG sparkline for the last `window` points of `metric`.
+// Returns a string (consumed by template literals that already feed innerHTML).
+// Guards: if history isn't loaded yet or the country has no points, render a
+// subtle skeleton bar so the column doesn't collapse to zero-width.
+function buildSparkline(country, metric, opts = {}) {
+  const {
+    window = 90,
+    width = 92,
+    height = 22,
+    strokeWidth = 1.4
+  } = opts;
+
+  const points = getCountryHistory(country)
+    .filter(p => Number.isFinite(p[metric]))
+    .slice(-window);
+
+  if (points.length < 2) {
+    // Skeleton — neutral grey bar centred vertically.
+    const y = (height / 2).toFixed(1);
+    return `<svg class="sparkline sparkline-empty" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" aria-hidden="true">
+      <line x1="2" y1="${y}" x2="${width - 2}" y2="${y}"
+            stroke="var(--line-2)" stroke-width="1" stroke-dasharray="2 3"/>
+    </svg>`;
+  }
+
+  const values = points.map(p => p[metric]);
+  let lo = Math.min(...values);
+  let hi = Math.max(...values);
+  if (lo === hi) { lo -= 1; hi += 1; }
+  const padX = 2;
+  const padY = 3;
+  const innerW = width - padX * 2;
+  const innerH = height - padY * 2;
+  const step = innerW / (points.length - 1);
+
+  const xy = points.map((p, i) => {
+    const x = padX + i * step;
+    const y = padY + innerH - ((p[metric] - lo) / (hi - lo)) * innerH;
+    return [x, y];
+  });
+  const polyPts = xy.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+
+  // Last segment gets its own colour by sign of the final value, so the user can
+  // read direction at a glance without staring at the axis.
+  const lastSign = pctClass(values[values.length - 1]);
+  const lastSegStart = xy[xy.length - 2];
+  const lastSegEnd = xy[xy.length - 1];
+  const lastColor = lastSign === 'pos' ? 'var(--up)'
+                  : lastSign === 'neg' ? 'var(--down)'
+                  : 'var(--ink-2)';
+
+  return `<svg class="sparkline" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" aria-hidden="true">
+    <polyline points="${polyPts}"
+              fill="none"
+              stroke="var(--ink-2)"
+              stroke-width="${strokeWidth}"
+              stroke-linejoin="round"
+              stroke-linecap="round"
+              opacity="0.7"/>
+    <line x1="${lastSegStart[0].toFixed(1)}" y1="${lastSegStart[1].toFixed(1)}"
+          x2="${lastSegEnd[0].toFixed(1)}" y2="${lastSegEnd[1].toFixed(1)}"
+          stroke="${lastColor}"
+          stroke-width="${strokeWidth + 0.4}"
+          stroke-linecap="round"/>
+    <circle cx="${lastSegEnd[0].toFixed(1)}" cy="${lastSegEnd[1].toFixed(1)}"
+            r="1.6" fill="${lastColor}"/>
+  </svg>`;
 }
 
 // ============================================================
@@ -2235,16 +2848,22 @@ function buildColorScale(values) {
 // FILTERS
 // ============================================================
 function applyFilters() {
-  const { search, region, type, minPerf } = state.filters;
+  const { search, region, type, minPerf, maxPerf, filterMetric, favsOnly } = state.filters;
   const q = search.trim().toLowerCase();
+  const metricKey = filterMetric === '__active__' ? state.metric : filterMetric;
+  const rangeActive = minPerf > -100 || maxPerf < 100;
   state.filtered = state.data.filter(d => {
     if (q && !d.country.toLowerCase().includes(q)) return false;
     if (region !== 'all' && d.region !== region) return false;
     if (type !== 'all' && d.type !== type) return false;
-    if (typeof d[state.metric] === 'number' && d[state.metric] < minPerf) return false;
+    if (favsOnly && !(state.favourites && state.favourites.has(d.country))) return false;
+    const v = d[metricKey];
+    if (rangeActive && !Number.isFinite(v)) return false;
+    if (Number.isFinite(v) && (v < minPerf || v > maxPerf)) return false;
     return true;
   });
   renderAll();
+  if (typeof writeStateToUrl === 'function') writeStateToUrl();
 }
 
 // ============================================================
@@ -2264,7 +2883,41 @@ function renderAll() {
   renderBarChart();
   renderHistogram();
   renderTreemap();
+  if (state.activeTab === 'compare') {
+    renderComparison();
+    renderScatter();
+  }
   updateMetricLabels();
+  updateChartA11ySummaries();
+}
+
+function updateChartA11ySummaries() {
+  // Text-equivalents for the bar chart and histogram so screen readers can read
+  // the same information sighted users see in the visuals.
+  const m = state.metric;
+  const validRows = state.filtered.filter(d => Number.isFinite(d[m]));
+  const barEl = document.getElementById('barChartA11y');
+  if (barEl) {
+    if (!validRows.length) {
+      barEl.textContent = `No markets with ${METRIC_LABELS[m]} data.`;
+    } else {
+      const sorted = [...validRows].sort((a, b) => b[m] - a[m]);
+      const top = sorted.slice(0, 3).map(d => `${d.country} ${fmtPct(d[m])}`).join(', ');
+      const bot = sorted.slice(-3).reverse().map(d => `${d.country} ${fmtPct(d[m])}`).join(', ');
+      barEl.textContent = `Ranking of ${sorted.length} markets by ${METRIC_LABELS[m]}. Top: ${top}. Bottom: ${bot}.`;
+    }
+  }
+  const histEl = document.getElementById('histChartA11y');
+  if (histEl) {
+    const values = validRows.map(d => d[m]);
+    if (!values.length) {
+      histEl.textContent = `No data for ${METRIC_LABELS[m]} histogram.`;
+    } else {
+      const mean = values.reduce((s, v) => s + v, 0) / values.length;
+      const up = values.filter(v => v > 0).length;
+      histEl.textContent = `Distribution of ${METRIC_LABELS[m]} returns across ${values.length} markets. ${up} positive, ${values.length - up} non-positive. Average ${fmtPct(mean)}.`;
+    }
+  }
 }
 
 function updateMetricLabels() {
@@ -2508,17 +3161,27 @@ function renderTable() {
   const m = state.metric;
 
   if (!sorted.length) {
-    tbody.innerHTML = '<tr><td colspan="12"><div class="empty-state">No markets match your filters.</div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="13"><div class="empty-state">No markets match your filters.</div></td></tr>';
   } else {
     tbody.innerHTML = sorted.map((d, i) => {
       const cell = (val, key) => {
         const active = key === m ? ' metric-active' : '';
-        return `<td class="${active}"><span class="pct ${pctClass(val)}">${fmtPct(val)}</span></td>`;
+        // Only show day-over-day delta in the *active* metric column to avoid
+        // visual noise. Falls back to empty string when no history yet.
+        const dchip = key === m ? deltaChip(d.country, m, { compact: true }) : '';
+        return `<td class="${active}"><span class="pct ${pctClass(val)}">${fmtPct(val)}</span>${dchip}</td>`;
       };
+      const isFav = state.favourites && state.favourites.has(d.country);
       return `
-        <tr data-country="${d.country}">
+        <tr data-country="${d.country}" tabindex="0">
           <td><span class="rank">${String(i + 1).padStart(2, '0')}</span></td>
-          <td><span class="flag">${flag(d.country)}</span>${d.country}</td>
+          <td>
+            <button class="fav-toggle ${isFav ? 'active' : ''}" data-country="${d.country}"
+                    aria-label="${isFav ? 'Unstar' : 'Star'} ${d.country}"
+                    aria-pressed="${isFav ? 'true' : 'false'}"
+                    title="${isFav ? 'Remove from favourites' : 'Add to favourites'}">${isFav ? '★' : '☆'}</button>
+            <span class="flag">${flag(d.country)}</span>${d.country}
+          </td>
           <td>${d.region}</td>
           <td><span class="badge ${d.type === 'Developed' ? 'dev' : 'emerg'}">${d.type}</span></td>
           ${cell(d.day, 'day')}
@@ -2529,21 +3192,34 @@ function renderTable() {
           ${cell(d.threeYr, 'threeYr')}
           ${cell(d.fiveYr, 'fiveYr')}
           ${cell(d.tenYr, 'tenYr')}
+          <td class="trend-cell">${buildSparkline(d.country, m)}</td>
         </tr>
       `;
     }).join('');
   }
 
+  // Kick off lazy history load on first render so sparklines populate ASAP.
+  if (!state.history && !state.historyPromise) {
+    fetchHistory().then(() => {
+      // Only re-render if we got real data — avoids a no-op flash.
+      if (state.history && state.history.series && Object.keys(state.history.series).length) {
+        renderTable();
+      }
+    });
+  }
+
   document.getElementById('tableCount').textContent =
     `Showing ${state.filtered.length} of ${state.data.length} markets`;
 
-  // Header indicators
+  // Header indicators + ARIA sort state for screen-readers
   document.querySelectorAll('#dataTable thead th').forEach(th => {
     th.classList.remove('sorted', 'metric-active');
+    th.removeAttribute('aria-sort');
     const arrow = th.querySelector('.sort-arrow');
     if (arrow) arrow.remove();
     if (th.dataset.key === key) {
       th.classList.add('sorted');
+      th.setAttribute('aria-sort', dir === 'asc' ? 'ascending' : 'descending');
       const a = document.createElement('span');
       a.className = 'sort-arrow';
       a.textContent = dir === 'asc' ? '↑' : '↓';
@@ -2834,20 +3510,580 @@ function renderHistogram() {
 }
 
 // ============================================================
+// FAVOURITES (Phase 3.2)
+// ============================================================
+const FAVOURITES_STORAGE_KEY = 'msci-folio-favourites';
+function loadFavourites() {
+  try {
+    const raw = localStorage.getItem(FAVOURITES_STORAGE_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr.filter(c => typeof c === 'string') : []);
+  } catch (e) { return new Set(); }
+}
+function saveFavourites() {
+  try { localStorage.setItem(FAVOURITES_STORAGE_KEY, JSON.stringify([...state.favourites])); }
+  catch (e) { /* silent */ }
+}
+function toggleFavourite(country) {
+  if (!country) return;
+  if (state.favourites.has(country)) state.favourites.delete(country);
+  else state.favourites.add(country);
+  saveFavourites();
+  // If currently filtering to favourites only, re-run the filter; else just re-paint the table.
+  if (state.filters.favsOnly) applyFilters();
+  else renderTable();
+}
+
+// ============================================================
+// DEEP-LINK STATE (Phase 3.3)
+// ============================================================
+const URL_KEYS = ['metric', 'tab', 'region', 'type', 'q', 'min', 'max', 'fm', 'favs'];
+
+function readStateFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const metric = params.get('metric');
+  if (metric && METRIC_LABELS[metric]) state.metric = metric;
+  const tab = params.get('tab');
+  if (tab && ['overview', 'markets', 'compare'].includes(tab)) state.activeTab = tab;
+  const region = params.get('region');
+  if (region) state.filters.region = region;
+  const type = params.get('type');
+  if (type) state.filters.type = type;
+  const q = params.get('q');
+  if (q !== null) state.filters.search = q;
+  const min = params.get('min');
+  if (min !== null && !isNaN(+min)) state.filters.minPerf = Math.max(-100, Math.min(100, +min));
+  const max = params.get('max');
+  if (max !== null && !isNaN(+max)) state.filters.maxPerf = Math.max(-100, Math.min(100, +max));
+  const fm = params.get('fm');
+  if (fm && (fm === '__active__' || METRIC_LABELS[fm])) state.filters.filterMetric = fm;
+  if (params.get('favs') === '1') state.filters.favsOnly = true;
+}
+
+function applyFiltersUiFromState() {
+  // Mirror state.filters / state.metric / state.activeTab onto the actual DOM
+  // controls so URL-derived state shows up correctly on boot.
+  const search = document.getElementById('searchInput');
+  if (search) search.value = state.filters.search || '';
+  document.querySelectorAll('#regionChips .chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.value === state.filters.region);
+  });
+  document.querySelectorAll('#typeChips .chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.value === state.filters.type);
+  });
+  document.querySelectorAll('#favChips .chip').forEach(c => {
+    const isFavs = c.dataset.value === 'favs';
+    c.classList.toggle('active', state.filters.favsOnly ? isFavs : !isFavs);
+  });
+  const fm = document.getElementById('filterMetric');
+  if (fm) fm.value = state.filters.filterMetric;
+  const lo = document.getElementById('perfRangeMin');
+  const hi = document.getElementById('perfRangeMax');
+  if (lo) lo.value = state.filters.minPerf;
+  if (hi) hi.value = state.filters.maxPerf;
+  const perfLabel = document.getElementById('perfRangeLabel');
+  if (perfLabel) {
+    const fmtSigned = v => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v) + '%';
+    perfLabel.textContent = `${fmtSigned(state.filters.minPerf)} … ${fmtSigned(state.filters.maxPerf)}`;
+  }
+  document.querySelectorAll('#globalMetric button').forEach(b => {
+    b.classList.toggle('active', b.dataset.metric === state.metric);
+  });
+}
+
+function writeStateToUrl() {
+  const params = new URLSearchParams();
+  if (state.metric !== 'oneYr') params.set('metric', state.metric);
+  if (state.activeTab !== 'overview') params.set('tab', state.activeTab);
+  if (state.filters.region !== 'all') params.set('region', state.filters.region);
+  if (state.filters.type !== 'all') params.set('type', state.filters.type);
+  if (state.filters.search) params.set('q', state.filters.search);
+  if (state.filters.minPerf !== -100) params.set('min', String(state.filters.minPerf));
+  if (state.filters.maxPerf !== 100) params.set('max', String(state.filters.maxPerf));
+  if (state.filters.filterMetric !== '__active__') params.set('fm', state.filters.filterMetric);
+  if (state.filters.favsOnly) params.set('favs', '1');
+
+  // Preserve ?theme= so screenshot links keep working.
+  const existingTheme = new URLSearchParams(window.location.search).get('theme');
+  if (existingTheme) params.set('theme', existingTheme);
+
+  const qs = params.toString();
+  const url = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+  window.history.replaceState(null, '', url);
+}
+
+// ============================================================
+// EXPORT (CSV + PNG) — Phase 3.1
+// ============================================================
+function exportCSV() {
+  if (!state.filtered.length) {
+    showToast({ label: 'No data', message: 'Nothing to export.', duration: 1800 });
+    return;
+  }
+  const cols = [
+    ['country',  'Country'],
+    ['region',   'Region'],
+    ['type',     'Type'],
+    ['day',      '1D %'],
+    ['mtd',      'MTD %'],
+    ['threeMtd', '3MTD %'],
+    ['ytd',      'YTD %'],
+    ['oneYr',    '1Y %'],
+    ['threeYr',  '3Y % (ann.)'],
+    ['fiveYr',   '5Y % (ann.)'],
+    ['tenYr',    '10Y % (ann.)'],
+  ];
+  // Reuse the existing sort so the export matches what the user sees.
+  const { key, dir } = state.sort;
+  const sorted = [...state.filtered].sort((a, b) => {
+    let av = a[key], bv = b[key];
+    if (av == null && bv == null) return 0;
+    if (av == null) return 1;
+    if (bv == null) return -1;
+    if (typeof av === 'string') { av = av.toLowerCase(); bv = bv.toLowerCase(); }
+    if (av < bv) return dir === 'asc' ? -1 : 1;
+    if (av > bv) return dir === 'asc' ? 1 : -1;
+    return 0;
+  });
+  const esc = (v) => {
+    if (v === null || v === undefined) return '';
+    const s = String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const lines = [cols.map(c => c[1]).join(',')];
+  for (const row of sorted) {
+    lines.push(cols.map(([key]) => esc(row[key])).join(','));
+  }
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `msci-markets-${state.metric}-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  showToast({ label: 'Exported', message: `${sorted.length} rows → CSV`, duration: 1800 });
+}
+
+function exportPNG() {
+  // Tab-aware: export whatever is currently the dominant chart on the active tab.
+  const tab = state.activeTab;
+  let chart = null;
+  let stampLabel = '';
+  if (tab === 'compare') {
+    chart = state.comparisonChart || state.barChart;
+    stampLabel = 'Comparison';
+  } else if (tab === 'markets') {
+    chart = state.barChart;
+    stampLabel = 'Markets';
+  } else {
+    chart = state.barChart;
+    stampLabel = 'Overview';
+  }
+  if (!chart) {
+    showToast({ label: 'No chart', message: 'Open a tab with a chart, then export.', duration: 1800 });
+    return;
+  }
+  try {
+    const baseUrl = chart.toBase64Image();
+    const img = new Image();
+    img.onload = () => {
+      const pad = 30;
+      const stampH = 38;
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height + stampH;
+      const ctx = canvas.getContext('2d');
+      // Background — matches current theme paper colour.
+      ctx.fillStyle = cssVar('bg-1') || '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      // Caption stamp
+      const asOf = (state.meta && state.meta.asOf) ? state.meta.asOf : new Date().toISOString().slice(0, 10);
+      const stamp = `MSCI/ETF proxy · ${stampLabel} · as of ${asOf} · personal use`;
+      ctx.fillStyle = cssVar('ink-3') || '#666';
+      ctx.font = '11px "IBM Plex Mono", monospace';
+      ctx.fillText(stamp, pad, img.height + stampH - 14);
+      canvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `msci-${tab}-${state.metric}-${asOf}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }, 'image/png');
+      showToast({ label: 'Exported', message: `${stampLabel} → PNG`, duration: 1800 });
+    };
+    img.src = baseUrl;
+  } catch (e) {
+    console.warn('PNG export failed:', e);
+    showToast({ label: 'Export failed', message: 'Could not render PNG.', duration: 2000 });
+  }
+}
+
+// ============================================================
+// COMPARISON LINE CHART (Phase 2.2)
+// ============================================================
+const COMPARISON_STORAGE_KEY = 'msci-folio-comparison';
+const COMPARISON_MAX = 5;
+const COMPARISON_MIN = 2;
+// Categorical palette derived from CSS vars — kept small so colours stay distinct.
+const COMPARISON_PALETTE = [
+  'accent', 'pos', 'neg', 'ink-1', 'accent-dim'
+];
+function comparisonColor(i) {
+  const name = COMPARISON_PALETTE[i % COMPARISON_PALETTE.length];
+  return cssVar(name);
+}
+
+function loadComparisonCountries() {
+  try {
+    const raw = localStorage.getItem(COMPARISON_STORAGE_KEY);
+    if (!raw) return null;
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return null;
+    return arr.filter(c => typeof c === 'string' && COUNTRY_META[c]);
+  } catch (e) { return null; }
+}
+function saveComparisonCountries() {
+  try { localStorage.setItem(COMPARISON_STORAGE_KEY, JSON.stringify(state.comparisonCountries)); }
+  catch (e) { /* silent */ }
+}
+
+function windowCutoffDate(window) {
+  const today = new Date();
+  if (window === '3M') return new Date(today.getFullYear(), today.getMonth() - 3, today.getDate());
+  if (window === '6M') return new Date(today.getFullYear(), today.getMonth() - 6, today.getDate());
+  if (window === '1Y') return new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
+  return new Date(1970, 0, 1);
+}
+
+function buildComparisonChips() {
+  const wrap = document.getElementById('comparisonChips');
+  if (!wrap) return;
+  const countries = [...state.data]
+    .map(d => d.country)
+    .sort((a, b) => a.localeCompare(b));
+  wrap.innerHTML = countries.map(c => {
+    const active = state.comparisonCountries.includes(c);
+    return `<button class="chip ${active ? 'active' : ''}" data-country="${c}">${flag(c)} ${c}</button>`;
+  }).join('');
+  wrap.querySelectorAll('.chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const country = btn.dataset.country;
+      const idx = state.comparisonCountries.indexOf(country);
+      if (idx >= 0) {
+        if (state.comparisonCountries.length <= COMPARISON_MIN) return;
+        state.comparisonCountries.splice(idx, 1);
+      } else {
+        if (state.comparisonCountries.length >= COMPARISON_MAX) {
+          showToast({ label: 'Maximum reached', message: `Up to ${COMPARISON_MAX} markets at once.`, duration: 1800 });
+          return;
+        }
+        state.comparisonCountries.push(country);
+      }
+      saveComparisonCountries();
+      buildComparisonChips();
+      renderComparison();
+    });
+  });
+}
+
+async function renderComparison() {
+  const canvas = document.getElementById('comparisonChart');
+  if (!canvas) return;
+  // Lazy-load history if needed; come back when it lands.
+  if (!state.history) {
+    fetchHistory().then(() => renderComparison());
+    if (state.comparisonChart) { state.comparisonChart.destroy(); state.comparisonChart = null; }
+    const ctx0 = canvas.getContext('2d');
+    ctx0.clearRect(0, 0, canvas.width, canvas.height);
+    return;
+  }
+  const m = state.metric;
+  const cutoff = windowCutoffDate(state.comparisonWindow);
+  const datasets = state.comparisonCountries.map((country, i) => {
+    const points = getCountryHistory(country)
+      .filter(p => Number.isFinite(p[m]))
+      .filter(p => new Date(p.d) >= cutoff)
+      .map(p => ({ x: p.d, y: p[m] }));
+    const color = comparisonColor(i);
+    return {
+      label: country,
+      data: points,
+      borderColor: color,
+      backgroundColor: color,
+      borderWidth: 2,
+      tension: 0.18,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      fill: false,
+    };
+  });
+  if (state.comparisonChart) state.comparisonChart.destroy();
+  state.comparisonChart = new Chart(canvas.getContext('2d'), {
+    type: 'line',
+    data: { datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 400 },
+      interaction: { mode: 'nearest', intersect: false },
+      plugins: {
+        legend: { display: true, position: 'top', labels: { color: cssVar('chart-tick-cat'), font: { family: 'IBM Plex Sans', size: 11 } } },
+        tooltip: {
+          backgroundColor: cssVar('chart-tooltip-bg'),
+          titleColor: cssVar('chart-tooltip-title'),
+          bodyColor: cssVar('chart-tooltip-body'),
+          borderColor: cssVar('chart-tooltip-border'),
+          borderWidth: 1, padding: 12, cornerRadius: 2,
+          callbacks: {
+            label: ctx => `${ctx.dataset.label}: ${fmtPct(ctx.parsed.y)}`
+          }
+        }
+      },
+      scales: {
+        x: {
+          type: 'time',
+          time: { unit: state.comparisonWindow === '3M' ? 'week' : 'month' },
+          grid: { color: cssVar('chart-grid'), drawTicks: false },
+          ticks: { color: cssVar('chart-tick-num'), font: { family: 'IBM Plex Mono', size: 10 }, maxRotation: 0 },
+          border: { color: cssVar('chart-axis-border') }
+        },
+        y: {
+          grid: { color: cssVar('chart-grid') },
+          ticks: { color: cssVar('chart-tick-num'), font: { family: 'IBM Plex Mono', size: 10 }, callback: v => v + '%' },
+          border: { color: cssVar('chart-axis-border') }
+        }
+      }
+    }
+  });
+  const meta = document.getElementById('comparisonMeta');
+  if (meta) {
+    meta.textContent = `${state.comparisonCountries.length} markets · ${METRIC_LABELS[m]} · ${state.comparisonWindow} window`;
+  }
+}
+
+// ============================================================
+// SCATTER (momentum view) — Phase 3.4
+// ============================================================
+function renderScatter() {
+  const canvas = document.getElementById('scatterChart');
+  if (!canvas) return;
+  const { x: xKey, y: yKey, color: colorKey } = state.scatterAxes;
+  const points = state.filtered
+    .filter(d => Number.isFinite(d[xKey]) && Number.isFinite(d[yKey]));
+
+  // Group by colour-by key so each group gets a legend entry.
+  const groups = {};
+  points.forEach(d => {
+    const k = d[colorKey] || 'Other';
+    (groups[k] = groups[k] || []).push(d);
+  });
+
+  const groupColor = (k) => {
+    // Map regions/types onto the comparison palette so colours come from CSS vars.
+    const keys = Object.keys(groups);
+    return comparisonColor(keys.indexOf(k));
+  };
+
+  const datasets = Object.entries(groups).map(([k, rows]) => ({
+    label: k,
+    data: rows.map(d => ({ x: d[xKey], y: d[yKey], country: d.country, region: d.region, type: d.type })),
+    backgroundColor: groupColor(k),
+    borderColor: groupColor(k),
+    pointRadius: 5,
+    pointHoverRadius: 8,
+  }));
+
+  if (state.scatterChart) state.scatterChart.destroy();
+  state.scatterChart = new Chart(canvas.getContext('2d'), {
+    type: 'scatter',
+    data: { datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 300 },
+      plugins: {
+        legend: { position: 'top', labels: { color: cssVar('chart-tick-cat') } },
+        tooltip: {
+          backgroundColor: cssVar('chart-tooltip-bg'),
+          titleColor: cssVar('chart-tooltip-title'),
+          bodyColor: cssVar('chart-tooltip-body'),
+          borderColor: cssVar('chart-tooltip-border'),
+          borderWidth: 1, padding: 12, cornerRadius: 2,
+          callbacks: {
+            title: ctx => ctx[0].raw.country,
+            label: ctx => [
+              `${METRIC_SHORT[xKey]}: ${fmtPct(ctx.raw.x)}`,
+              `${METRIC_SHORT[yKey]}: ${fmtPct(ctx.raw.y)}`,
+              `${ctx.raw.region} · ${ctx.raw.type}`
+            ]
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: cssVar('chart-grid') },
+          ticks: { color: cssVar('chart-tick-num'), font: { family: 'IBM Plex Mono', size: 10 }, callback: v => v + '%' },
+          border: { color: cssVar('chart-axis-border') },
+          title: { display: true, text: METRIC_LABELS[xKey], color: cssVar('chart-tick-cat'), font: { family: 'IBM Plex Mono', size: 11 } }
+        },
+        y: {
+          grid: { color: cssVar('chart-grid') },
+          ticks: { color: cssVar('chart-tick-num'), font: { family: 'IBM Plex Mono', size: 10 }, callback: v => v + '%' },
+          border: { color: cssVar('chart-axis-border') },
+          title: { display: true, text: METRIC_LABELS[yKey], color: cssVar('chart-tick-cat'), font: { family: 'IBM Plex Mono', size: 11 } }
+        }
+      }
+    }
+  });
+  const meta = document.getElementById('scatterMeta');
+  if (meta) {
+    meta.textContent = `${points.length} markets · X=${METRIC_LABELS[xKey]} · Y=${METRIC_LABELS[yKey]} · coloured by ${colorKey}`;
+  }
+}
+
+// ============================================================
+// COUNTRY DETAIL DRAWER (Phase 2.3)
+// ============================================================
+let drawerChart = null;
+
+function openCountryDrawer(country) {
+  const record = state.data.find(r => r.country === country);
+  if (!record) return;
+  const drawer = document.getElementById('detailDrawer');
+  const backdrop = document.getElementById('drawerBackdrop');
+  if (!drawer) return;
+
+  document.getElementById('drawerFlag').textContent = flag(country);
+  document.getElementById('drawerTitle').textContent = country;
+  document.getElementById('drawerRegion').textContent = `${record.region} · ${record.type}`;
+
+  // Metrics grid
+  const metricsEl = document.getElementById('drawerMetrics');
+  const METRICS = ['day', 'mtd', 'threeMtd', 'sixMtd', 'ytd', 'oneYr', 'threeYr', 'fiveYr', 'tenYr', 'vol1Y', 'maxDd1Y'];
+  metricsEl.innerHTML = METRICS.map(k => `
+    <div class="drawer-metric">
+      <span class="drawer-metric-label">${METRIC_LABELS[k]}</span>
+      <span class="drawer-metric-value ${pctClass(record[k])}">${fmtPct(record[k])}</span>
+    </div>
+  `).join('');
+
+  // Ranks
+  const rankEl = document.getElementById('drawerRank');
+  const m = state.metric;
+  const computeRank = (subset) => {
+    const sorted = subset.filter(r => Number.isFinite(r[m])).sort((a, b) => b[m] - a[m]);
+    const idx = sorted.findIndex(r => r.country === country);
+    return idx >= 0 ? `${idx + 1} of ${sorted.length}` : '—';
+  };
+  const overall = computeRank(state.data);
+  const region = computeRank(state.data.filter(r => r.region === record.region));
+  const type = computeRank(state.data.filter(r => r.type === record.type));
+  rankEl.innerHTML = `
+    <div>Overall by ${METRIC_LABELS[m]}: <em>${overall}</em></div>
+    <div>${record.region}: <em>${region}</em></div>
+    <div>${record.type}: <em>${type}</em></div>
+  `;
+
+  document.getElementById('drawerHistoryLabel').textContent = `${METRIC_LABELS[m]} history`;
+
+  // Chart
+  const canvas = document.getElementById('drawerChart');
+  if (drawerChart) drawerChart.destroy();
+  if (!state.history) {
+    fetchHistory().then(() => {
+      // Only re-open if drawer is still showing this country.
+      if (drawer.classList.contains('open') && document.getElementById('drawerTitle').textContent === country) {
+        openCountryDrawer(country);
+      }
+    });
+  } else {
+    const points = getCountryHistory(country)
+      .filter(p => Number.isFinite(p[m]))
+      .map(p => ({ x: p.d, y: p[m] }));
+    drawerChart = new Chart(canvas.getContext('2d'), {
+      type: 'line',
+      data: { datasets: [{
+        label: METRIC_LABELS[m],
+        data: points,
+        borderColor: cssVar('accent'),
+        backgroundColor: cssVarAlpha('accent', 0.12),
+        borderWidth: 2,
+        tension: 0.18,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+        fill: true,
+      }] },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 300 },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: cssVar('chart-tooltip-bg'),
+            titleColor: cssVar('chart-tooltip-title'),
+            bodyColor: cssVar('chart-tooltip-body'),
+            borderColor: cssVar('chart-tooltip-border'),
+            borderWidth: 1, padding: 10, cornerRadius: 2,
+            callbacks: { label: ctx => fmtPct(ctx.parsed.y) }
+          }
+        },
+        scales: {
+          x: { type: 'time', time: { unit: 'month' },
+               grid: { color: cssVar('chart-grid') },
+               ticks: { color: cssVar('chart-tick-num'), font: { family: 'IBM Plex Mono', size: 9 }, maxRotation: 0 } },
+          y: { grid: { color: cssVar('chart-grid') },
+               ticks: { color: cssVar('chart-tick-num'), font: { family: 'IBM Plex Mono', size: 9 }, callback: v => v + '%' } }
+        }
+      }
+    });
+  }
+
+  drawer.hidden = false;
+  backdrop.hidden = false;
+  requestAnimationFrame(() => {
+    drawer.classList.add('open');
+    backdrop.classList.add('visible');
+  });
+  document.getElementById('drawerClose').focus();
+}
+
+function closeCountryDrawer() {
+  const drawer = document.getElementById('detailDrawer');
+  const backdrop = document.getElementById('drawerBackdrop');
+  if (!drawer) return;
+  drawer.classList.remove('open');
+  backdrop.classList.remove('visible');
+  setTimeout(() => {
+    drawer.hidden = true;
+    backdrop.hidden = true;
+    if (drawerChart) { drawerChart.destroy(); drawerChart = null; }
+  }, 320);
+}
+
+// ============================================================
 // LINKED INTERACTIVITY (map ↔ table ↔ treemap)
 // ============================================================
 function focusCountry(countryName) {
-  setActiveTab('markets');
-  // wait briefly for the tab fade-in
-  setTimeout(() => {
-    const row = document.querySelector(`#tableBody tr[data-country="${CSS.escape(countryName)}"]`);
-    if (!row) return;
-    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  // Primary action when a country is clicked anywhere: open the detail drawer.
+  // The old behaviour (jump to the Markets tab and pulse the row) was useful
+  // pre-drawer but is now noisy alongside the drawer slide-in — keep the row
+  // pulse for parity but skip the tab jump.
+  openCountryDrawer(countryName);
+  const row = document.querySelector(`#tableBody tr[data-country="${CSS.escape(countryName)}"]`);
+  if (row) {
     row.classList.remove('focused');
-    void row.offsetWidth;  // force reflow so the animation restarts
+    void row.offsetWidth;
     row.classList.add('focused');
     setTimeout(() => row.classList.remove('focused'), 2600);
-  }, 280);
+  }
 }
 
 function pulseMapCountry(countryName) {
@@ -2858,11 +4094,16 @@ function pulseMapCountry(countryName) {
   state.g.selectAll('path.country-path')
     .filter(function(d) { return String(d.id).padStart(3, '0') === meta.iso; })
     .classed('row-hover', true);
+  state.g.selectAll('circle.small-market').classed('row-hover', false);
+  state.g.selectAll('circle.small-market')
+    .filter(function(d) { return d.country === countryName; })
+    .classed('row-hover', true);
 }
 
 function clearMapPulse() {
   if (!state.g) return;
   state.g.selectAll('path.country-path').classed('row-hover', false);
+  state.g.selectAll('circle.small-market').classed('row-hover', false);
 }
 
 // ============================================================
@@ -2992,9 +4233,11 @@ function handleTreemapHover(event, record) {
   const tooltip = document.getElementById('treemapTooltip');
   if (!tooltip || !record) return;
   const row = (lbl, v) => `<div class="tooltip-row"><span class="lbl">${lbl}</span><span class="val ${pctClass(v)}">${fmtPct(v)}</span></div>`;
+  const spark = buildSparkline(record.country, state.metric, { width: 200, height: 28 });
   tooltip.innerHTML = `
     <div class="tooltip-country"><span class="flag">${flag(record.country)}</span>${record.country}</div>
     <div class="tooltip-region">${record.region} · ${record.type}</div>
+    <div class="tooltip-sparkline">${spark}</div>
     ${row('1D', record.day)}
     ${row('MTD', record.mtd)}
     ${row('3MTD', record.threeMtd)}
@@ -3019,6 +4262,18 @@ function handleTreemapHover(event, record) {
 // ============================================================
 // MAP
 // ============================================================
+// Small markets the world-atlas 110m topojson doesn't render as usable polygons
+// (city-states or sub-polygon islands). We overlay a small circle marker for each,
+// coloured via the same colorScale and wired up to the same tooltip path.
+const SMALL_MARKET_COORDS = {
+  'Singapore': [103.82, 1.35],
+  'Hong Kong': [114.17, 22.32],
+  'Qatar':     [51.18,  25.32],
+  'UAE':       [54.37,  24.45],
+  'Bahrain':   [50.55,  26.07],
+  'Malta':     [14.42,  35.94]
+};
+
 async function initMap() {
   const svg = d3.select('#worldMap');
   state.svg = svg;
@@ -3059,6 +4314,37 @@ async function initMap() {
         if (meta) focusCountry(meta[0]);
       });
 
+    // Small-market overlay markers (Singapore, Hong Kong, Qatar, UAE …).
+    // Reuse handleMapHover by passing a synthetic feature whose `id` matches
+    // the COUNTRY_META iso code, so the existing tooltip path works unchanged.
+    const markersData = Object.entries(SMALL_MARKET_COORDS)
+      .filter(([country]) => COUNTRY_META[country])
+      .map(([country, lonlat]) => {
+        const xy = state.projection(lonlat);
+        return {
+          country,
+          id: COUNTRY_META[country].iso,
+          x: xy[0],
+          y: xy[1]
+        };
+      });
+    g.append('g')
+      .attr('class', 'small-market-markers')
+      .selectAll('circle.small-market')
+      .data(markersData, d => d.country)
+      .join('circle')
+      .attr('class', 'small-market')
+      .attr('cx', d => d.x)
+      .attr('cy', d => d.y)
+      .attr('r', 4.5)
+      .attr('data-country', d => d.country)
+      .attr('data-id', d => d.id)
+      .style('cursor', 'pointer')
+      .style('pointer-events', 'all')
+      .on('mousemove', handleMapHover)
+      .on('mouseleave', () => document.getElementById('mapTooltip').classList.remove('visible'))
+      .on('click', (event, d) => focusCountry(d.country));
+
     state.zoom = d3.zoom()
       .scaleExtent([1, 8])
       .on('zoom', (e) => g.attr('transform', e.transform));
@@ -3098,6 +4384,23 @@ function updateMapColors() {
       }
       return cssVar('map-empty') || '#0e1622';
     });
+
+  // Small-market overlay circles — colour with the same scale, hide when no data.
+  state.g.selectAll('circle.small-market')
+    .each(function(d) {
+      const record = dataByIso[d.id];
+      d3.select(this).classed('has-data', !!(record && Number.isFinite(record[m])));
+    })
+    .transition()
+    .duration(600)
+    .ease(d3.easeCubicInOut)
+    .style('fill', function(d) {
+      const record = dataByIso[d.id];
+      if (record && Number.isFinite(record[m])) {
+        return state.colorScale.fn(record[m]);
+      }
+      return cssVar('map-empty') || '#0e1622';
+    });
 }
 
 function updateLegend() {
@@ -3130,9 +4433,11 @@ function handleMapHover(event, d) {
     return;
   }
   const row = (lbl, v) => `<div class="tooltip-row"><span class="lbl">${lbl}</span><span class="val ${pctClass(v)}">${fmtPct(v)}</span></div>`;
+  const spark = buildSparkline(record.country, state.metric, { width: 200, height: 28 });
   tooltip.innerHTML = `
     <div class="tooltip-country"><span class="flag">${flag(record.country)}</span>${record.country}</div>
     <div class="tooltip-region">${record.region} · ${record.type}</div>
+    <div class="tooltip-sparkline">${spark}</div>
     ${row('1D', record.day)}
     ${row('MTD', record.mtd)}
     ${row('3MTD', record.threeMtd)}
@@ -3167,9 +4472,13 @@ function setActiveTab(name) {
       renderTreemap();
       if (state.barChart) state.barChart.resize();
       if (state.histChart) state.histChart.resize();
+      buildComparisonChips();
+      renderComparison();
+      renderScatter();
     }
     triggerScrollReveal();
   }, 30);
+  if (typeof writeStateToUrl === 'function') writeStateToUrl();
 }
 
 // ============================================================
@@ -3208,6 +4517,7 @@ function setMetric(name) {
   document.querySelectorAll('#globalMetric button').forEach(b =>
     b.classList.toggle('active', b.dataset.metric === name));
   renderAll();
+  if (typeof writeStateToUrl === 'function') writeStateToUrl();
   // Brass-pulse the newly-active column in the table so the change registers
   // visually even when the user is scrolled to the Markets tab.
   requestAnimationFrame(() => {
@@ -3240,8 +4550,25 @@ function hideLoader() {
   setTimeout(() => { overlay.style.display = 'none'; }, 600);
 }
 
+// Days between two YYYY-MM-DD dates, ignoring weekends. ~negative if asOf > now.
+function businessDaysSince(asOf) {
+  if (!asOf) return null;
+  const start = new Date(asOf);
+  if (isNaN(start.getTime())) return null;
+  const today = new Date();
+  let cursor = new Date(start.getTime());
+  let bDays = 0;
+  while (cursor < today) {
+    cursor.setDate(cursor.getDate() + 1);
+    const day = cursor.getDay();
+    if (day !== 0 && day !== 6) bDays++;
+  }
+  return bDays;
+}
+
 function renderDataSourceBanner(meta) {
   const label = document.getElementById('dataSourceLabel');
+  const banner = document.getElementById('infoBanner');
   if (!label) return;
   const source = meta.source || 'UNKNOWN';
   const asOf = meta.asOf ? new Date(meta.asOf).toLocaleDateString('en-GB',
@@ -3253,7 +4580,28 @@ function renderDataSourceBanner(meta) {
     'FAILED':      `Last scrape failed — showing nothing. Check the Actions tab for the error log.`,
   }[source] || `Source: ${source} (as of ${asOf})`;
 
-  label.innerHTML = sourceText;
+  // Build the validation chip (Phase 3.7) and the staleness chip (Phase 3.6).
+  let extras = '';
+  const v = meta.validation;
+  if (v && typeof v.compared === 'number') {
+    const ok = !v.discrepancyCount;
+    const tone = ok ? 'pos' : 'warn';
+    const tip = (v.discrepancies || []).slice(0, 6)
+      .map(d => `${d.country} ${d.metric}: MSCI ${d.msci > 0 ? '+' : ''}${d.msci} vs ETF ${d.etf > 0 ? '+' : ''}${d.etf}`)
+      .join(' · ');
+    extras += ` <span class="banner-chip ${tone}" title="${(tip || 'All metrics agree across sources').replace(/"/g, '&quot;')}">MSCI vs ETF: ${v.discrepancyCount} discrepancies / ${v.compared} compared</span>`;
+  }
+  const bDays = businessDaysSince(meta.asOf);
+  if (bDays !== null && bDays > 3) {
+    extras += ` <span class="banner-chip warn" title="Most recent successful scrape was ${asOf}">Data is ${bDays} weekdays old</span>`;
+  }
+
+  label.innerHTML = sourceText + extras;
+  // Tint the banner amber when stale or discrepant.
+  if (banner) {
+    const warn = (bDays !== null && bDays > 3) || (v && v.discrepancyCount > 0);
+    banner.classList.toggle('warn', !!warn);
+  }
 }
 
 // ============================================================
@@ -3279,6 +4627,7 @@ async function loadAndRender({ force = false } = {}) {
     }
     state.data = payload.markets;
     const meta = payload.meta || {};
+    state.meta = meta;
     state.lastSeenUpdate = meta.lastUpdated;
 
     const asOfTs = meta.lastUpdated ? new Date(meta.lastUpdated).getTime() : ts;
@@ -3351,6 +4700,13 @@ function wireEvents() {
   const themeBtn = document.getElementById('themeToggle');
   if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
 
+  // Paper-tone toggle (cream ↔ neutral, light mode only)
+  const paperBtn = document.getElementById('paperToggle');
+  if (paperBtn) {
+    if (localStorage.getItem(PAPER_STORAGE_KEY) === 'neutral') paperBtn.classList.add('active');
+    paperBtn.addEventListener('click', togglePaper);
+  }
+
   // Refresh
   document.getElementById('refreshBtn').addEventListener('click', () => loadAndRender({ force: true }));
 
@@ -3379,14 +4735,56 @@ function wireEvents() {
     });
   });
 
-  // Perf range
-  const perfRange = document.getElementById('perfRange');
+  // Dual-thumb min/max range (Phase 3.5)
+  const perfMin = document.getElementById('perfRangeMin');
+  const perfMax = document.getElementById('perfRangeMax');
   const perfLabel = document.getElementById('perfRangeLabel');
-  perfRange.addEventListener('input', e => {
-    state.filters.minPerf = +e.target.value;
-    perfLabel.textContent = `≥ ${e.target.value}%`;
+  const fmtSigned = v => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v) + '%';
+  function syncRangeLabel() {
+    perfLabel.textContent = `${fmtSigned(state.filters.minPerf)} … ${fmtSigned(state.filters.maxPerf)}`;
+  }
+  function onRangeInput() {
+    let lo = +perfMin.value, hi = +perfMax.value;
+    // Don't let the thumbs cross — keep a 1pp gap.
+    if (lo > hi - 1) {
+      if (this === perfMin) { lo = hi - 1; perfMin.value = lo; }
+      else { hi = lo + 1; perfMax.value = hi; }
+    }
+    state.filters.minPerf = lo;
+    state.filters.maxPerf = hi;
+    syncRangeLabel();
     applyFilters();
+  }
+  if (perfMin && perfMax) {
+    perfMin.addEventListener('input', onRangeInput);
+    perfMax.addEventListener('input', onRangeInput);
+    syncRangeLabel();
+  }
+
+  // Favourites filter chip-row
+  document.querySelectorAll('#favChips .chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('#favChips .chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      state.filters.favsOnly = chip.dataset.value === 'favs';
+      applyFilters();
+    });
   });
+
+  // Filter-by-metric selector (Phase 3.5)
+  const filterMetricEl = document.getElementById('filterMetric');
+  if (filterMetricEl) {
+    filterMetricEl.addEventListener('change', e => {
+      state.filters.filterMetric = e.target.value;
+      applyFilters();
+    });
+  }
+
+  // Export buttons (Phase 3.1)
+  const csvBtn = document.getElementById('exportCsvBtn');
+  if (csvBtn) csvBtn.addEventListener('click', exportCSV);
+  const pngBtn = document.getElementById('exportPngBtn');
+  if (pngBtn) pngBtn.addEventListener('click', exportPNG);
 
   // Global metric
   document.querySelectorAll('#globalMetric button').forEach(btn => {
@@ -3402,7 +4800,7 @@ function wireEvents() {
   document.querySelectorAll('#dataTable thead th').forEach(th => {
     th.addEventListener('click', () => {
       const key = th.dataset.key;
-      if (key === 'rank') return;
+      if (key === 'rank' || key === 'trend') return;
       if (state.sort.key === key) {
         state.sort.dir = state.sort.dir === 'asc' ? 'desc' : 'asc';
       } else {
@@ -3444,7 +4842,65 @@ function wireEvents() {
     resizeTimer = setTimeout(() => {
       if (state.barChart) state.barChart.resize();
       if (state.histChart) state.histChart.resize();
+      if (state.comparisonChart) state.comparisonChart.resize();
+      if (state.scatterChart) state.scatterChart.resize();
     }, 200);
+  });
+
+  // Comparison-window chips (3M / 6M / 1Y / Max)
+  document.querySelectorAll('#comparisonWindow .chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('#comparisonWindow .chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      state.comparisonWindow = chip.dataset.window;
+      renderComparison();
+    });
+  });
+
+  // Scatter axis selectors
+  const onScatterChange = () => {
+    state.scatterAxes.x = document.getElementById('scatterX').value;
+    state.scatterAxes.y = document.getElementById('scatterY').value;
+    state.scatterAxes.color = document.getElementById('scatterColor').value;
+    renderScatter();
+  };
+  ['scatterX', 'scatterY', 'scatterColor'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('change', onScatterChange);
+  });
+
+  // Favourites — star toggles, delegated on the table body.
+  // Also: clicking a row (away from the star) opens the country detail drawer.
+  const favTbody = document.getElementById('tableBody');
+  if (favTbody) {
+    favTbody.addEventListener('click', (e) => {
+      const btn = e.target.closest('button.fav-toggle');
+      if (btn) {
+        e.stopPropagation();
+        toggleFavourite(btn.dataset.country);
+        return;
+      }
+      const tr = e.target.closest('tr[data-country]');
+      if (tr) openCountryDrawer(tr.dataset.country);
+    });
+    // Keyboard: Enter on a focused row opens the drawer (Phase 3.8).
+    favTbody.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      const tr = e.target.closest('tr[data-country]');
+      if (tr) { e.preventDefault(); openCountryDrawer(tr.dataset.country); }
+    });
+  }
+
+  // Drawer close affordances (Esc, backdrop click, X button)
+  const drawerClose = document.getElementById('drawerClose');
+  if (drawerClose) drawerClose.addEventListener('click', closeCountryDrawer);
+  const drawerBackdrop = document.getElementById('drawerBackdrop');
+  if (drawerBackdrop) drawerBackdrop.addEventListener('click', closeCountryDrawer);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const drawer = document.getElementById('detailDrawer');
+      if (drawer && drawer.classList.contains('open')) closeCountryDrawer();
+    }
   });
 }
 
@@ -3487,7 +4943,7 @@ function applyTheme(theme, { transition = false } = {}) {
   }
   // Re-render every dynamic block — charts pick up new tooltip / axis colours,
   // map redraws with new ocean + heatmap stops, table picks up new badges.
-  if (window.state && window.state.data && window.state.data.length) {
+  if (state && state.data && state.data.length) {
     renderAll();
   }
 }
@@ -3499,7 +4955,7 @@ function applyPaper(paper) {
   } else {
     root.removeAttribute('data-paper');
   }
-  if (window.state && window.state.data && window.state.data.length) renderAll();
+  if (state && state.data && state.data.length) renderAll();
 }
 
 function toggleTheme() {
@@ -3516,12 +4972,39 @@ function toggleTheme() {
   });
 }
 
+function togglePaper() {
+  const current = document.documentElement.getAttribute('data-paper') === 'neutral' ? 'neutral' : 'cream';
+  const next = current === 'neutral' ? 'cream' : 'neutral';
+  if (next === 'neutral') {
+    localStorage.setItem(PAPER_STORAGE_KEY, 'neutral');
+  } else {
+    localStorage.removeItem(PAPER_STORAGE_KEY);
+  }
+  applyPaper(next === 'neutral' ? 'neutral' : null);
+  const btn = document.getElementById('paperToggle');
+  if (btn) btn.classList.toggle('active', next === 'neutral');
+  showToast({
+    label: next === 'neutral' ? 'Neutral paper' : 'Cream paper',
+    message: next === 'neutral' ? 'Switched to neutral off-white.' : 'Back to cream.',
+    sub: 'Tap the page icon to flip.',
+    duration: 2000
+  });
+}
+
 (async function init() {
   // Theme must be set BEFORE first paint so we don't flash dark → light.
   const initial = pickInitialTheme();
   applyTheme(initial.theme);
   const savedPaper = localStorage.getItem(PAPER_STORAGE_KEY);
   if (savedPaper === 'neutral') applyPaper('neutral');
+
+  // Restore saved Comparison selections (Phase 2.2) and Favourites (Phase 3.2).
+  const savedComparison = loadComparisonCountries();
+  if (savedComparison && savedComparison.length >= 2) state.comparisonCountries = savedComparison.slice(0, 5);
+  state.favourites = loadFavourites();
+
+  // Deep-link state (Phase 3.3) — URL wins over defaults.
+  if (typeof readStateFromUrl === 'function') readStateFromUrl();
 
   // Windows doesn't ship a colour emoji font for flags. Flag emoji fall back
   // to two plain letters (US, GB, IE...) which looks broken and shifts table
@@ -3540,6 +5023,13 @@ function toggleTheme() {
   await initMap();
   setLoadingStatus('Loading market data…');
   await loadAndRender();
+
+  // After data lands, mirror URL-derived state back onto the UI controls and
+  // switch to the requested tab (the default is 'overview').
+  applyFiltersUiFromState();
+  if (state.activeTab && state.activeTab !== 'overview') {
+    setActiveTab(state.activeTab);
+  }
 })();
 </script>
 </body>

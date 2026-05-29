@@ -271,6 +271,20 @@ async def search_with_market(page, debug_dir, market_label, name):
     return results
 
 
+def parse_pct(s):
+    """Parse a percentage-like string into a float, returning None for empty/'-'.
+
+    Module-level so pytest can import it. Used by parse_msci_tables.
+    """
+    if s is None: return None
+    s = str(s).replace(',', '').replace('%', '').replace('+', '').strip()
+    if s in ('', '-', '—', 'N/A', 'NA'): return None
+    if re.match(r'^-?\d+\.?\d*$', s):
+        try: return float(s)
+        except ValueError: pass
+    return None
+
+
 def parse_msci_tables(tables):
     """Parse country performance from MSCI's table using fixed column positions:
        row[0] = MSCI Index name
@@ -287,15 +301,6 @@ def parse_msci_tables(tables):
     """
     results = {}
     aliases = build_country_aliases()
-
-    def parse_pct(s):
-        if s is None: return None
-        s = str(s).replace(',', '').replace('%', '').replace('+', '').strip()
-        if s in ('', '-', '—', 'N/A', 'NA'): return None
-        if re.match(r'^-?\d+\.?\d*$', s):
-            try: return float(s)
-            except ValueError: pass
-        return None
 
     for tbl in tables:
         for row in tbl['rows']:
@@ -431,15 +436,46 @@ def fetch_etf_returns():
             oldest_avail = closes.index[0].date()
             yrs_available = (last_date - oldest_avail).days / 365.25
 
+            # ---------- Phase 4.1: extra ETF-derived metrics ----------
+            # 6M return from the trailing-6-months closest close.
+            six_m_anchor = anchor_close(closes, last_date - timedelta(days=183))
+            six_m_return = (round((last_close / six_m_anchor - 1) * 100, 2)
+                            if six_m_anchor else None)
+
+            # Realised volatility — annualised stdev of daily log returns, ~1Y window.
+            vol_window = closes.iloc[-252:] if len(closes) >= 252 else closes
+            vol = None
+            max_dd = None
+            if len(vol_window) >= 30:
+                # Daily simple returns.
+                pct = vol_window.pct_change().dropna()
+                if len(pct):
+                    # Annualise daily stdev with sqrt(252) trading days.
+                    daily_std = float(pct.std())
+                    vol = round(daily_std * (252 ** 0.5) * 100, 2)
+
+                # Max drawdown across the 1Y window — worst peak-to-trough %.
+                running_peak = vol_window.cummax()
+                dd_series = (vol_window / running_peak - 1) * 100
+                worst = float(dd_series.min())
+                # Drawdowns are negative-valued; round to 2dp.
+                max_dd = round(worst, 2) if worst < 0 else 0.0
+
             results[country] = {
                 'day':      round((last_close / prev_close   - 1) * 100, 2),
                 'mtd':      round((last_close / month_anchor - 1) * 100, 2),
                 'threeMtd': round((last_close / three_m_anchor - 1) * 100, 2) if three_m_anchor else None,
+                'sixMtd':   six_m_return,
                 'ytd':      round((last_close / year_anchor  - 1) * 100, 2),
                 'oneYr':    round((last_close / one_yr_anchor - 1) * 100, 2) if one_yr_anchor else None,
                 'threeYr':  ann_return(last_close, three_yr_anchor, 3) if yrs_available >= 3 else None,
                 'fiveYr':   ann_return(last_close, five_yr_anchor,  5) if yrs_available >= 5 else None,
                 'tenYr':    ann_return(last_close, ten_yr_anchor,  10) if yrs_available >= 10 else None,
+                'vol1Y':    vol,
+                'maxDd1Y':  max_dd,
+                # _close is kept for history.json so future rebuilds can
+                # re-derive returns; build_output() drops it before write.
+                '_close':   round(last_close, 4),
             }
         except Exception as e:
             print(f"[ETF] {country:18s} {ticker_sym:6s}  ERROR: {type(e).__name__}: {e}", file=sys.stderr)
@@ -505,11 +541,14 @@ def build_output(market_data, source, validation=None):
                 'day':      d.get('day'),
                 'mtd':      d.get('mtd'),
                 'threeMtd': d.get('threeMtd'),
+                'sixMtd':   d.get('sixMtd'),
                 'ytd':      d.get('ytd'),
                 'oneYr':    d.get('oneYr'),
                 'threeYr':  d.get('threeYr'),
                 'fiveYr':   d.get('fiveYr'),
                 'tenYr':    d.get('tenYr'),
+                'vol1Y':    d.get('vol1Y'),
+                'maxDd1Y':  d.get('maxDd1Y'),
                 'region':   meta['region'],
                 'type':     meta['type'],
             })
@@ -531,6 +570,121 @@ def load_previous(path):
         try: return json.loads(path.read_text())
         except Exception: return None
     return None
+
+
+# Schema validation (Phase 4.2). Run at the end of main() and abort the commit
+# if the output is obviously malformed so the GitHub Action surfaces it instead
+# of silently committing junk over a known-good file.
+REQUIRED_FIELDS = (
+    'country', 'region', 'type', 'day', 'mtd', 'threeMtd', 'ytd',
+    'oneYr', 'threeYr', 'fiveYr', 'tenYr',
+)
+SANE_PCT_BOUNDS = (-99.5, 500.0)
+
+
+def validate_output(output, min_markets=25):
+    """Return a list of validation problems (empty list = OK)."""
+    problems = []
+    if not isinstance(output, dict):
+        problems.append('output is not a dict')
+        return problems
+    markets = output.get('markets')
+    if not isinstance(markets, list):
+        problems.append('output.markets is not a list')
+        return problems
+    if len(markets) < min_markets:
+        problems.append(f'too few markets: {len(markets)} < {min_markets}')
+
+    seen = set()
+    for i, m in enumerate(markets):
+        if not isinstance(m, dict):
+            problems.append(f'row {i} is not a dict'); continue
+        for f in REQUIRED_FIELDS:
+            if f not in m:
+                problems.append(f'row {i} ({m.get("country", "?")}) missing field {f}')
+        country = m.get('country')
+        if country in seen:
+            problems.append(f'duplicate country: {country}')
+        seen.add(country)
+        for k in ('day', 'mtd', 'threeMtd', 'sixMtd', 'ytd', 'oneYr', 'threeYr', 'fiveYr', 'tenYr'):
+            v = m.get(k)
+            if v is None:
+                continue
+            if not isinstance(v, (int, float)):
+                problems.append(f'{country} {k} is not numeric: {v!r}')
+                continue
+            lo, hi = SANE_PCT_BOUNDS
+            if not (lo <= v <= hi):
+                problems.append(f'{country} {k} out of sane bounds: {v}')
+    return problems
+
+
+# History-file rolling cap. ~400 trading days ≈ 18 months — small enough that the
+# JSON stays trivial to fetch, long enough that the Compare-tab 1Y window has
+# headroom for non-trading-day backfill.
+HISTORY_CAP = 400
+HISTORY_SCHEMA_VERSION = 1
+HISTORY_METRIC_KEYS = ('day', 'mtd', 'threeMtd', 'ytd', 'oneYr')
+
+
+def update_history(history_path, primary_data, etf_data, as_of_date):
+    """Append today's snapshot to data/history.json.
+
+    De-dupe: if a series already has a point with this date, overwrite it
+    (handles same-day re-runs). Cap each series to HISTORY_CAP points.
+
+    Pulls metric values from primary_data (MSCI or ETF, whichever won) and
+    augments with the raw ETF close when available — close enables future
+    re-derivation if metric definitions change.
+    """
+    if history_path.exists():
+        try:
+            history = json.loads(history_path.read_text())
+        except Exception:
+            history = {'schemaVersion': HISTORY_SCHEMA_VERSION, 'series': {}}
+    else:
+        history = {'schemaVersion': HISTORY_SCHEMA_VERSION, 'series': {}}
+
+    series = history.setdefault('series', {})
+    date_str = as_of_date.isoformat() if hasattr(as_of_date, 'isoformat') else str(as_of_date)
+
+    appended = 0
+    for country in MARKETS:
+        row = primary_data.get(country) or {}
+        etf_row = etf_data.get(country) or {}
+        if not row and not etf_row:
+            continue
+
+        point = {'d': date_str}
+        for key in HISTORY_METRIC_KEYS:
+            v = row.get(key) if row.get(key) is not None else etf_row.get(key)
+            if v is not None:
+                point[key] = v
+
+        close = etf_row.get('_close')
+        if close is not None:
+            point['close'] = close
+
+        if len(point) == 1:
+            # Just the date — nothing worth storing.
+            continue
+
+        existing = series.get(country, [])
+        # Drop any existing same-day entry, append, sort, cap.
+        existing = [p for p in existing if p.get('d') != date_str]
+        existing.append(point)
+        existing.sort(key=lambda p: p.get('d', ''))
+        if len(existing) > HISTORY_CAP:
+            existing = existing[-HISTORY_CAP:]
+        series[country] = existing
+        appended += 1
+
+    history['schemaVersion'] = HISTORY_SCHEMA_VERSION
+    history['lastUpdated'] = datetime.now(timezone.utc).isoformat(timespec='seconds')
+
+    # Compact JSON — the file is fetched by every client on demand.
+    history_path.write_text(json.dumps(history, separators=(',', ':')))
+    print(f"[HISTORY] appended {appended} country points → {history_path.name}")
 
 
 async def main():
@@ -563,24 +717,49 @@ async def main():
     if len(msci_data) >= 5 and len(etf_data) >= 5:
         validation = validate_sources(msci_data, etf_data)
 
+    history_path = repo_root / 'data' / 'history.json'
+    primary_for_history = None
+
     if len(msci_data) >= 30:
         print(f"\n[OK] MSCI captured {len(msci_data)}/{len(MARKETS)} — using MSCI as PRIMARY source")
         output = build_output(msci_data, source='MSCI', validation=validation)
+        primary_for_history = msci_data
     elif len(etf_data) >= 30:
         print(f"\n[OK] yfinance captured {len(etf_data)}/{len(MARKETS)} — using ETF proxy")
         output = build_output(etf_data, source='ETF_PROXY', validation=validation)
+        primary_for_history = etf_data
     else:
         print(f"\n[ERR] Neither source ≥30 (MSCI={len(msci_data)}, ETF={len(etf_data)})", file=sys.stderr)
         if previous and previous.get('markets'):
             print("[OK] keeping previous data file")
             return 0
         output = build_output(etf_data or msci_data, source='ETF_PROXY' if etf_data else 'MSCI' if msci_data else 'FAILED', validation=validation)
+        # Don't append history on a FAILED run — only good data goes into the timeline.
+
+    # Schema validation gate (Phase 4.2). If the output is clearly malformed
+    # *and* we already have a good previous file, prefer keeping the previous
+    # one instead of committing junk.
+    problems = validate_output(output)
+    if problems:
+        print(f"\n[VALIDATE_SCHEMA] {len(problems)} issue(s):", file=sys.stderr)
+        for p in problems[:20]:
+            print(f"[VALIDATE_SCHEMA]   - {p}", file=sys.stderr)
+        if previous and previous.get('markets') and len(problems) > 5:
+            print("[VALIDATE_SCHEMA] keeping previous file (too many issues)", file=sys.stderr)
+            return 0
 
     out_path.write_text(json.dumps(output, indent=2))
     print(f"\n[OK] wrote {out_path}")
     print(f"      {output['marketsCount']} markets, source={output['source']}")
     if validation:
         print(f"      validation: {validation['discrepancyCount']} discrepancies of {validation['compared']} compared")
+
+    if primary_for_history is not None:
+        try:
+            update_history(history_path, primary_for_history, etf_data, datetime.now(timezone.utc).date())
+        except Exception as e:
+            print(f"[HISTORY] update failed: {type(e).__name__}: {e}", file=sys.stderr)
+
     return 0
 
 
