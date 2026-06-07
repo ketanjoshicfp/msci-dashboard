@@ -3855,11 +3855,24 @@ async function renderComparison() {
   }
   const m = state.metric;
   const cutoff = windowCutoffDate(state.comparisonWindow);
+  // History stores a time series only for day/mtd/threeMtd/ytd/oneYr. For longer-
+  // horizon metrics (3Y/5Y/10Y) there's no per-period series to plot, so fall back
+  // to cumulative return derived from each market's close, rebased to 0% at the
+  // start of the window — the canonical "compare markets side by side" trendline.
+  const useCumulative = !historyHasMetric(m);
   const datasets = state.comparisonCountries.map((country, i) => {
-    const points = getCountryHistory(country)
-      .filter(p => Number.isFinite(p[m]))
-      .filter(p => new Date(p.d) >= cutoff)
-      .map(p => ({ x: p.d, y: p[m] }));
+    let points;
+    if (useCumulative) {
+      const raw = getCountryHistory(country)
+        .filter(p => Number.isFinite(p.close) && new Date(p.d) >= cutoff);
+      const base = raw.length ? raw[0].close : null;
+      points = base ? raw.map(p => ({ x: p.d, y: (p.close / base - 1) * 100 })) : [];
+    } else {
+      points = getCountryHistory(country)
+        .filter(p => Number.isFinite(p[m]))
+        .filter(p => new Date(p.d) >= cutoff)
+        .map(p => ({ x: p.d, y: p[m] }));
+    }
     const color = comparisonColor(i);
     return {
       label: country,
@@ -3873,19 +3886,15 @@ async function renderComparison() {
       fill: false,
     };
   });
-  // Nothing to plot — explain why rather than leaving a blank chart. The common
-  // case is selecting a metric (3Y/5Y/10Y) that history doesn't store.
+  // Nothing to plot — only happens now if history failed to load or the window
+  // excludes every point (3Y/5Y/10Y fall back to cumulative return above).
   const totalPoints = datasets.reduce((n, ds) => n + ds.data.length, 0);
   if (!totalPoints) {
     clearChart();
     if (meta) {
-      if (state.history.loadError) {
-        meta.textContent = 'Market history couldn’t be loaded — check your connection and hit Refresh Data.';
-      } else if (!historyHasMetric(m)) {
-        meta.textContent = `Trend history isn’t collected for ${METRIC_LABELS[m]} — switch the metric to 1D, MTD, 3MTD, YTD or 1Y to compare these markets over time.`;
-      } else {
-        meta.textContent = `No history in the ${state.comparisonWindow} window for the selected markets — try a longer window.`;
-      }
+      meta.textContent = state.history.loadError
+        ? 'Market history couldn’t be loaded — check your connection and hit Refresh Data.'
+        : `No history in the ${state.comparisonWindow} window for the selected markets — try a longer window.`;
     }
     return;
   }
@@ -3928,7 +3937,8 @@ async function renderComparison() {
     }
   });
   if (meta) {
-    meta.textContent = `${state.comparisonCountries.length} markets · ${METRIC_LABELS[m]} · ${state.comparisonWindow} window`;
+    const seriesLabel = useCumulative ? 'Cumulative return (indexed)' : METRIC_LABELS[m];
+    meta.textContent = `${state.comparisonCountries.length} markets · ${seriesLabel} · ${state.comparisonWindow} window`;
   }
 }
 
