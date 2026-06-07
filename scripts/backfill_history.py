@@ -17,6 +17,7 @@ the dashboard has real data for sparklines / Compare from day one.
 import argparse
 import json
 import sys
+import time
 from datetime import date, timedelta, datetime, timezone
 from pathlib import Path
 
@@ -74,6 +75,23 @@ def reconstruct_point(closes_index_dates, closes_values, as_of_date):
     point['threeMtd'] = round((last_close / three_m_anchor - 1) * 100, 2) if three_m_anchor else None
     point['ytd'] = round((last_close / year_anchor - 1) * 100, 2) if year_anchor else None
     point['oneYr'] = round((last_close / one_yr_anchor - 1) * 100, 2) if one_yr_anchor else None
+
+    # Long-horizon metrics for the Compare trendlines. 6M is a simple return;
+    # 3/5/10Y are annualised and only emitted when enough price history exists
+    # before this date, so we never pass off a since-inception return as a true
+    # multi-year figure (mirrors the live scraper's yrs_available guard).
+    dts = [d for d, _ in upto]
+    vals = [v for _, v in upto]
+    six_m_anchor = _anchor_close(dts, vals, as_of_date - timedelta(days=183))
+    point['sixMtd'] = round((last_close / six_m_anchor - 1) * 100, 2) if six_m_anchor else None
+    avail_years = (last_date - upto[0][0]).days / 365.25
+    if avail_years >= 3:
+        point['threeYr'] = _ann_return(last_close, _anchor_close(dts, vals, as_of_date - timedelta(days=365 * 3)), 3)
+    if avail_years >= 5:
+        point['fiveYr'] = _ann_return(last_close, _anchor_close(dts, vals, as_of_date - timedelta(days=365 * 5)), 5)
+    if avail_years >= 10:
+        point['tenYr'] = _ann_return(last_close, _anchor_close(dts, vals, as_of_date - timedelta(days=365 * 10)), 10)
+
     point['close'] = round(last_close, 4)
 
     # Strip Nones — keep history file lean.
@@ -150,6 +168,7 @@ def main():
         except Exception as e:
             print(f'[backfill] {country:18s} {ticker_sym:6s}  ERROR: {type(e).__name__}: {e}',
                   file=sys.stderr)
+        time.sleep(0.8)  # be gentle with Yahoo to avoid 429 rate-limiting
 
     output = {
         'schemaVersion': HISTORY_SCHEMA_VERSION,

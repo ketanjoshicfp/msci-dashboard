@@ -639,7 +639,7 @@ def validate_output(output, min_markets=25):
 # headroom for non-trading-day backfill.
 HISTORY_CAP = 400
 HISTORY_SCHEMA_VERSION = 1
-HISTORY_METRIC_KEYS = ('day', 'mtd', 'threeMtd', 'ytd', 'oneYr')
+HISTORY_METRIC_KEYS = ('day', 'mtd', 'threeMtd', 'sixMtd', 'ytd', 'oneYr', 'threeYr', 'fiveYr', 'tenYr')
 
 
 def update_history(history_path, primary_data, etf_data, as_of_date):
