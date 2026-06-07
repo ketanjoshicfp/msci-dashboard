@@ -2028,10 +2028,10 @@ html.theme-transitioning *::after {
       </select>
     </div>
     <div class="filter-group dual-range-group">
-      <label>Return range: <span class="perf-range-display" id="perfRangeLabel">−100% … +100%</span></label>
+      <label>Return range: <span class="perf-range-display" id="perfRangeLabel">Any … Any</span></label>
       <div class="dual-range-wrap">
-        <input type="range" id="perfRangeMin" min="-100" max="100" value="-100" step="1" />
-        <input type="range" id="perfRangeMax" min="-100" max="100" value="100" step="1" />
+        <input type="range" id="perfRangeMin" min="-100" max="300" value="-100" step="1" />
+        <input type="range" id="perfRangeMax" min="-100" max="300" value="300" step="1" />
       </div>
     </div>
     <div class="filter-group export-group">
@@ -2431,12 +2431,27 @@ const METRIC_SHORT = {
 const CACHE_KEY = 'msci_dashboard_cache_v3';
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
+// Return-range filter bounds. A thumb sitting at one of these extremes means
+// "unbounded" — so markets with returns beyond ±100% (e.g. a market that more
+// than doubled, like Korea +252%) are shown by default instead of being silently
+// filtered out. Equity index annualised returns can't fall below −100%; the
+// +300% ceiling gives headroom for big 1Y/YTD rallies, and values above it still
+// show because the max thumb resting at PERF_RANGE_MAX disables the upper bound.
+const PERF_RANGE_MIN = -100;
+const PERF_RANGE_MAX = 300;
+function perfRangeText(minPerf, maxPerf) {
+  const sign = v => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v) + '%';
+  const lo = minPerf <= PERF_RANGE_MIN ? 'Any' : sign(minPerf);
+  const hi = maxPerf >= PERF_RANGE_MAX ? 'Any' : sign(maxPerf);
+  return `${lo} … ${hi}`;
+}
+
 const state = {
   data: [],
   filtered: [],
   filters: {
     search: '', region: 'all', type: 'all',
-    minPerf: -100, maxPerf: 100,
+    minPerf: PERF_RANGE_MIN, maxPerf: PERF_RANGE_MAX,
     filterMetric: '__active__',  // '__active__' means filter on state.metric
     favsOnly: false
   },
@@ -2554,8 +2569,9 @@ async function fetchHistory({ force = false } = {}) {
       return payload;
     } catch (e) {
       console.warn('History load failed:', e);
-      // Degrade gracefully — UI guards on state.history being null.
-      state.history = { schemaVersion: 0, series: {} };
+      // Degrade gracefully — UI guards on state.history being null. The loadError
+      // flag lets renderers show "history unavailable" instead of a silent blank.
+      state.history = { schemaVersion: 0, series: {}, loadError: true };
       return state.history;
     } finally {
       state.historyPromise = null;
@@ -2569,6 +2585,15 @@ async function fetchHistory({ force = false } = {}) {
 function getCountryHistory(country) {
   if (!state.history || !state.history.series) return [];
   return state.history.series[country] || [];
+}
+
+// True when at least one country's history carries finite values for `metric`.
+// Drives the Compare/drawer empty-state: history only stores day/mtd/threeMtd/
+// ytd/oneYr, so longer-horizon metrics (3Y/5Y/10Y) have no time series to plot.
+function historyHasMetric(metric) {
+  if (!state.history || !state.history.series) return false;
+  return Object.values(state.history.series).some(arr =>
+    Array.isArray(arr) && arr.some(p => Number.isFinite(p[metric])));
 }
 
 // Day-over-day delta for the active metric, derived from history.
@@ -2641,8 +2666,8 @@ function buildSparkline(country, metric, opts = {}) {
   const lastSign = pctClass(values[values.length - 1]);
   const lastSegStart = xy[xy.length - 2];
   const lastSegEnd = xy[xy.length - 1];
-  const lastColor = lastSign === 'pos' ? 'var(--up)'
-                  : lastSign === 'neg' ? 'var(--down)'
+  const lastColor = lastSign === 'pos' ? 'var(--pos)'
+                  : lastSign === 'neg' ? 'var(--neg)'
                   : 'var(--ink-2)';
 
   return `<svg class="sparkline" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" aria-hidden="true">
@@ -2806,42 +2831,47 @@ function buildColorScale(values) {
   const min = Math.min(...valid);
   const max = Math.max(...valid);
 
-  // Robust outlier handling: clamp to the 5th/95th percentile so a single
-  // extreme value (e.g. Korea +224%) doesn't flatten the rest of the gradient.
-  // Sort copy
+  // Robust outlier handling: build the colour ramp from the 5th/95th percentile
+  // so a single extreme value (e.g. Korea +252%) doesn't flatten the gradient for
+  // everyone else. d3's .clamp(true) maps anything beyond the ramp to the end
+  // colour. Branch on the TRUE min/max so a few outliers don't flip a genuinely
+  // two-sided distribution into a one-sided ramp (which would hide reds/greens).
   const sorted = [...valid].sort((a, b) => a - b);
   const p5  = sorted[Math.floor(sorted.length * 0.05)];
   const p95 = sorted[Math.floor(sorted.length * 0.95)];
-  const lo = Math.min(p5, min);   // keep actual min if p5 above
-  const hi = Math.max(p95, max);  // keep actual max if p95 below
 
-  let fn;
-  const hasZeroCross = (lo < 0 && hi > 0);
+  let fn, scaleLo, scaleHi;
+  const hasZeroCross = (min < 0 && max > 0);
 
   if (hasZeroCross) {
     // Diverging: anchor at 0 (Folio canonical R→N→G, dark-tuned)
-    const range = Math.max(Math.abs(p5), Math.abs(p95));
+    const range = Math.max(Math.abs(p5), Math.abs(p95)) || Math.max(Math.abs(min), Math.abs(max)) || 1;
+    scaleLo = -range; scaleHi = range;
     fn = d3.scaleLinear()
       .domain([-range, -range * 0.4, 0, range * 0.4, range])
       .range([STOPS.s1, STOPS.s2, STOPS.s3, STOPS.s4, STOPS.s5])
       .interpolate(d3.interpolateRgb)
       .clamp(true);
-  } else if (lo >= 0) {
-    // All positive: green gradient
+  } else if (min >= 0) {
+    // All positive: green gradient, clamped to the 5th/95th percentile.
+    scaleLo = p5; scaleHi = p95;
+    if (scaleLo === scaleHi) { scaleLo -= 1; scaleHi += 1; }
     fn = d3.scaleLinear()
-      .domain([lo, (lo + hi) / 2, hi])
+      .domain([scaleLo, (scaleLo + scaleHi) / 2, scaleHi])
       .range([STOPS.s3, STOPS.s4, STOPS.s5])
       .interpolate(d3.interpolateRgb)
       .clamp(true);
   } else {
-    // All negative: red gradient
+    // All negative: red gradient, clamped to the 5th/95th percentile.
+    scaleLo = p5; scaleHi = p95;
+    if (scaleLo === scaleHi) { scaleLo -= 1; scaleHi += 1; }
     fn = d3.scaleLinear()
-      .domain([lo, (lo + hi) / 2, hi])
+      .domain([scaleLo, (scaleLo + scaleHi) / 2, scaleHi])
       .range([STOPS.s1, STOPS.s2, STOPS.s3])
       .interpolate(d3.interpolateRgb)
       .clamp(true);
   }
-  return { fn, min, max, hasZeroCross };
+  return { fn, min, max, hasZeroCross, scaleLo, scaleHi };
 }
 
 // ============================================================
@@ -2851,15 +2881,22 @@ function applyFilters() {
   const { search, region, type, minPerf, maxPerf, filterMetric, favsOnly } = state.filters;
   const q = search.trim().toLowerCase();
   const metricKey = filterMetric === '__active__' ? state.metric : filterMetric;
-  const rangeActive = minPerf > -100 || maxPerf < 100;
+  // A thumb only filters when moved inward from its extreme; resting at the
+  // extreme means "unbounded", so high-return markets (Korea +252%, Taiwan
+  // +110%) aren't dropped by default and there's no invisible ±100% clamp.
+  const minActive = minPerf > PERF_RANGE_MIN;
+  const maxActive = maxPerf < PERF_RANGE_MAX;
   state.filtered = state.data.filter(d => {
     if (q && !d.country.toLowerCase().includes(q)) return false;
     if (region !== 'all' && d.region !== region) return false;
     if (type !== 'all' && d.type !== type) return false;
     if (favsOnly && !(state.favourites && state.favourites.has(d.country))) return false;
     const v = d[metricKey];
-    if (rangeActive && !Number.isFinite(v)) return false;
-    if (Number.isFinite(v) && (v < minPerf || v > maxPerf)) return false;
+    if (minActive || maxActive) {
+      if (!Number.isFinite(v)) return false;
+      if (minActive && v < minPerf) return false;
+      if (maxActive && v > maxPerf) return false;
+    }
     return true;
   });
   renderAll();
@@ -3553,9 +3590,9 @@ function readStateFromUrl() {
   const q = params.get('q');
   if (q !== null) state.filters.search = q;
   const min = params.get('min');
-  if (min !== null && !isNaN(+min)) state.filters.minPerf = Math.max(-100, Math.min(100, +min));
+  if (min !== null && !isNaN(+min)) state.filters.minPerf = Math.max(PERF_RANGE_MIN, Math.min(PERF_RANGE_MAX, +min));
   const max = params.get('max');
-  if (max !== null && !isNaN(+max)) state.filters.maxPerf = Math.max(-100, Math.min(100, +max));
+  if (max !== null && !isNaN(+max)) state.filters.maxPerf = Math.max(PERF_RANGE_MIN, Math.min(PERF_RANGE_MAX, +max));
   const fm = params.get('fm');
   if (fm && (fm === '__active__' || METRIC_LABELS[fm])) state.filters.filterMetric = fm;
   if (params.get('favs') === '1') state.filters.favsOnly = true;
@@ -3584,8 +3621,7 @@ function applyFiltersUiFromState() {
   if (hi) hi.value = state.filters.maxPerf;
   const perfLabel = document.getElementById('perfRangeLabel');
   if (perfLabel) {
-    const fmtSigned = v => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v) + '%';
-    perfLabel.textContent = `${fmtSigned(state.filters.minPerf)} … ${fmtSigned(state.filters.maxPerf)}`;
+    perfLabel.textContent = perfRangeText(state.filters.minPerf, state.filters.maxPerf);
   }
   document.querySelectorAll('#globalMetric button').forEach(b => {
     b.classList.toggle('active', b.dataset.metric === state.metric);
@@ -3599,8 +3635,8 @@ function writeStateToUrl() {
   if (state.filters.region !== 'all') params.set('region', state.filters.region);
   if (state.filters.type !== 'all') params.set('type', state.filters.type);
   if (state.filters.search) params.set('q', state.filters.search);
-  if (state.filters.minPerf !== -100) params.set('min', String(state.filters.minPerf));
-  if (state.filters.maxPerf !== 100) params.set('max', String(state.filters.maxPerf));
+  if (state.filters.minPerf !== PERF_RANGE_MIN) params.set('min', String(state.filters.minPerf));
+  if (state.filters.maxPerf !== PERF_RANGE_MAX) params.set('max', String(state.filters.maxPerf));
   if (state.filters.filterMetric !== '__active__') params.set('fm', state.filters.filterMetric);
   if (state.filters.favsOnly) params.set('favs', '1');
 
@@ -3670,20 +3706,18 @@ function exportCSV() {
 function exportPNG() {
   // Tab-aware: export whatever is currently the dominant chart on the active tab.
   const tab = state.activeTab;
-  let chart = null;
-  let stampLabel = '';
-  if (tab === 'compare') {
-    chart = state.comparisonChart || state.barChart;
-    stampLabel = 'Comparison';
-  } else if (tab === 'markets') {
-    chart = state.barChart;
-    stampLabel = 'Markets';
-  } else {
-    chart = state.barChart;
-    stampLabel = 'Overview';
+  // The exportable Chart.js canvases (comparison/bar/histogram) all live on the
+  // Compare tab. Overview shows an SVG map and Markets shows the table — neither
+  // is a Chart.js chart — so steer the user there rather than exporting a chart
+  // they can't see. (CSV export already covers the table from any tab.)
+  if (tab !== 'compare') {
+    showToast({ label: 'Switch to Compare', message: 'PNG export works on the Compare tab’s charts. Use CSV for the markets table.', duration: 2800 });
+    return;
   }
+  const chart = state.comparisonChart || state.barChart;
+  const stampLabel = 'Comparison';
   if (!chart) {
-    showToast({ label: 'No chart', message: 'Open a tab with a chart, then export.', duration: 1800 });
+    showToast({ label: 'No chart yet', message: 'Pick markets on the Compare tab, then export.', duration: 2000 });
     return;
   }
   try {
@@ -3707,6 +3741,10 @@ function exportPNG() {
       ctx.font = '11px "IBM Plex Mono", monospace';
       ctx.fillText(stamp, pad, img.height + stampH - 14);
       canvas.toBlob(blob => {
+        if (!blob) {
+          showToast({ label: 'Export failed', message: 'Could not create the PNG.', error: true, duration: 2400 });
+          return;
+        }
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -3715,8 +3753,9 @@ function exportPNG() {
         a.click();
         document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(url), 1000);
+        // Toast only after the blob is actually produced and the download fired.
+        showToast({ label: 'Exported', message: `${stampLabel} → PNG`, duration: 1800 });
       }, 'image/png');
-      showToast({ label: 'Exported', message: `${stampLabel} → PNG`, duration: 1800 });
     };
     img.src = baseUrl;
   } catch (e) {
@@ -3796,12 +3835,22 @@ function buildComparisonChips() {
 async function renderComparison() {
   const canvas = document.getElementById('comparisonChart');
   if (!canvas) return;
-  // Lazy-load history if needed; come back when it lands.
-  if (!state.history) {
-    fetchHistory().then(() => renderComparison());
+  const meta = document.getElementById('comparisonMeta');
+  const clearChart = () => {
     if (state.comparisonChart) { state.comparisonChart.destroy(); state.comparisonChart = null; }
     const ctx0 = canvas.getContext('2d');
     ctx0.clearRect(0, 0, canvas.width, canvas.height);
+  };
+  // Lazy-load history if needed; come back when it lands. Guard so concurrent
+  // callers (tab switch + a filter/metric change) don't stack re-render callbacks
+  // on the same shared promise and double-build the chart.
+  if (!state.history) {
+    if (!state.comparisonPending) {
+      state.comparisonPending = true;
+      fetchHistory().then(() => { state.comparisonPending = false; renderComparison(); });
+    }
+    clearChart();
+    if (meta) meta.textContent = 'Loading market history…';
     return;
   }
   const m = state.metric;
@@ -3824,6 +3873,22 @@ async function renderComparison() {
       fill: false,
     };
   });
+  // Nothing to plot — explain why rather than leaving a blank chart. The common
+  // case is selecting a metric (3Y/5Y/10Y) that history doesn't store.
+  const totalPoints = datasets.reduce((n, ds) => n + ds.data.length, 0);
+  if (!totalPoints) {
+    clearChart();
+    if (meta) {
+      if (state.history.loadError) {
+        meta.textContent = 'Market history couldn’t be loaded — check your connection and hit Refresh Data.';
+      } else if (!historyHasMetric(m)) {
+        meta.textContent = `Trend history isn’t collected for ${METRIC_LABELS[m]} — switch the metric to 1D, MTD, 3MTD, YTD or 1Y to compare these markets over time.`;
+      } else {
+        meta.textContent = `No history in the ${state.comparisonWindow} window for the selected markets — try a longer window.`;
+      }
+    }
+    return;
+  }
   if (state.comparisonChart) state.comparisonChart.destroy();
   state.comparisonChart = new Chart(canvas.getContext('2d'), {
     type: 'line',
@@ -3862,10 +3927,43 @@ async function renderComparison() {
       }
     }
   });
-  const meta = document.getElementById('comparisonMeta');
   if (meta) {
     meta.textContent = `${state.comparisonCountries.length} markets · ${METRIC_LABELS[m]} · ${state.comparisonWindow} window`;
   }
+}
+
+// ============================================================
+// METRIC OPTION AVAILABILITY (Phase 4.1 hardening)
+// ============================================================
+// Grey out metric choices that have no data in the current dataset — e.g. the
+// MSCI scrape path doesn't compute 6M / Vol 1Y / Max DD 1Y, so every market is
+// null for them. Without this, picking such a metric silently renders an empty
+// chart. Auto-re-enables once the data carries the metric (e.g. after a scrape).
+function updateMetricOptionAvailability() {
+  if (!state.data || !state.data.length) return;
+  const METRIC_KEYS = ['day','mtd','threeMtd','sixMtd','ytd','oneYr','threeYr','fiveYr','tenYr','vol1Y','maxDd1Y'];
+  const has = {};
+  METRIC_KEYS.forEach(k => { has[k] = state.data.some(d => Number.isFinite(d[k])); });
+  ['scatterX','scatterY','filterMetric'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    let selectedDisabled = false;
+    sel.querySelectorAll('option').forEach(opt => {
+      const k = opt.value;
+      if (!(k in has)) return; // leave non-metric options (e.g. __active__) alone
+      const ok = has[k];
+      opt.disabled = !ok;
+      const base = opt.textContent.replace(/ — no data$/, '');
+      opt.textContent = ok ? base : `${base} — no data`;
+      if (!ok && opt.selected) selectedDisabled = true;
+    });
+    // If the active selection just lost its data, fall back to a safe default.
+    if (selectedDisabled) {
+      if (id === 'filterMetric') { sel.value = '__active__'; state.filters.filterMetric = '__active__'; }
+      else if (id === 'scatterX') { sel.value = 'ytd';  state.scatterAxes.x = 'ytd'; }
+      else { sel.value = 'oneYr'; state.scatterAxes.y = 'oneYr'; }
+    }
+  });
 }
 
 // ============================================================
@@ -3877,6 +3975,16 @@ function renderScatter() {
   const { x: xKey, y: yKey, color: colorKey } = state.scatterAxes;
   const points = state.filtered
     .filter(d => Number.isFinite(d[xKey]) && Number.isFinite(d[yKey]));
+
+  // Empty-state: no markets have both axis metrics (a metric the data doesn't
+  // carry, or filters that excluded everything). Say so instead of empty axes.
+  if (!points.length) {
+    if (state.scatterChart) { state.scatterChart.destroy(); state.scatterChart = null; }
+    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+    const scMeta = document.getElementById('scatterMeta');
+    if (scMeta) scMeta.textContent = `No markets have both ${METRIC_LABELS[xKey]} and ${METRIC_LABELS[yKey]} — choose metrics with data.`;
+    return;
+  }
 
   // Group by colour-by key so each group gets a legend entry.
   const groups = {};
@@ -3953,7 +4061,7 @@ function renderScatter() {
 // ============================================================
 let drawerChart = null;
 
-function openCountryDrawer(country) {
+function openCountryDrawer(country, { refocus = true } = {}) {
   const record = state.data.find(r => r.country === country);
   if (!record) return;
   const drawer = document.getElementById('detailDrawer');
@@ -3995,7 +4103,7 @@ function openCountryDrawer(country) {
 
   // Chart
   const canvas = document.getElementById('drawerChart');
-  if (drawerChart) drawerChart.destroy();
+  if (drawerChart) { drawerChart.destroy(); drawerChart = null; }
   if (!state.history) {
     fetchHistory().then(() => {
       // Only re-open if drawer is still showing this country.
@@ -4007,7 +4115,7 @@ function openCountryDrawer(country) {
     const points = getCountryHistory(country)
       .filter(p => Number.isFinite(p[m]))
       .map(p => ({ x: p.d, y: p[m] }));
-    drawerChart = new Chart(canvas.getContext('2d'), {
+    drawerChart = points.length ? new Chart(canvas.getContext('2d'), {
       type: 'line',
       data: { datasets: [{
         label: METRIC_LABELS[m],
@@ -4043,7 +4151,16 @@ function openCountryDrawer(country) {
                ticks: { color: cssVar('chart-tick-num'), font: { family: 'IBM Plex Mono', size: 9 }, callback: v => v + '%' } }
         }
       }
-    });
+    }) : null;
+    if (!points.length) {
+      // No time series for this metric (history stores only day/mtd/threeMtd/
+      // ytd/oneYr) — clear the canvas and say so rather than drawing empty axes.
+      canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+      const histLabel = document.getElementById('drawerHistoryLabel');
+      if (histLabel) histLabel.textContent = state.history.loadError
+        ? 'History unavailable — try Refresh'
+        : `No ${METRIC_LABELS[m]} history to chart`;
+    }
   }
 
   drawer.hidden = false;
@@ -4052,7 +4169,7 @@ function openCountryDrawer(country) {
     drawer.classList.add('open');
     backdrop.classList.add('visible');
   });
-  document.getElementById('drawerClose').focus();
+  if (refocus) document.getElementById('drawerClose').focus();
 }
 
 function closeCountryDrawer() {
@@ -4405,23 +4522,32 @@ function updateMapColors() {
 
 function updateLegend() {
   if (!state.colorScale) return;
-  const { fn, min, max, hasZeroCross } = state.colorScale;
+  const { fn, min, max, hasZeroCross, scaleLo, scaleHi } = state.colorScale;
   const valuesEl = document.getElementById('legendBar');
   const labelsEl = document.getElementById('legendLabels');
 
-  // Build a smooth gradient from N samples
+  // Sample the gradient across the scale's actual (p5/p95-clamped) domain so the
+  // bar shows the full spectrum and the labels line up with where colours
+  // saturate — not the raw extremes, which would mislabel an outlier like Korea.
+  const lo = (scaleLo ?? min), hi = (scaleHi ?? max);
   const stops = [];
   const N = 24;
-  const lo = min, hi = max;
   for (let i = 0; i <= N; i++) {
     const v = lo + (hi - lo) * (i / N);
     stops.push(`${fn(v)} ${(i / N * 100).toFixed(0)}%`);
   }
   valuesEl.style.background = `linear-gradient(90deg, ${stops.join(', ')})`;
 
-  // Label endpoints + zero if it falls in range
+  // Label endpoints + zero if it falls in range. A leading "≤" / trailing "≥"
+  // flags that values beyond the clamp exist (e.g. the +252% outlier).
+  const loTxt = (min < lo ? '≤' : '') + fmtPct(lo);
+  const hiTxt = (max > hi ? '≥' : '') + fmtPct(hi);
   const mid = hasZeroCross ? '0%' : fmtPct((lo + hi) / 2);
-  labelsEl.innerHTML = `<span>${fmtPct(lo)}</span><span>${mid}</span><span>${fmtPct(hi)}</span>`;
+  labelsEl.replaceChildren(...[loTxt, mid, hiTxt].map(t => {
+    const s = document.createElement('span');
+    s.textContent = t;
+    return s;
+  }));
 }
 
 function handleMapHover(event, d) {
@@ -4553,14 +4679,18 @@ function hideLoader() {
 // Days between two YYYY-MM-DD dates, ignoring weekends. ~negative if asOf > now.
 function businessDaysSince(asOf) {
   if (!asOf) return null;
-  const start = new Date(asOf);
+  // Parse a bare YYYY-MM-DD as UTC midnight so the weekday count doesn't shift by
+  // a day for users in negative-offset timezones (full ISO strings carry their
+  // own offset). All arithmetic below is then done in UTC to stay consistent.
+  const startStr = /^\d{4}-\d{2}-\d{2}$/.test(asOf) ? asOf + 'T00:00:00Z' : asOf;
+  const start = new Date(startStr);
   if (isNaN(start.getTime())) return null;
   const today = new Date();
   let cursor = new Date(start.getTime());
   let bDays = 0;
   while (cursor < today) {
-    cursor.setDate(cursor.getDate() + 1);
-    const day = cursor.getDay();
+    cursor.setUTCDate(cursor.getUTCDate() + 1);
+    const day = cursor.getUTCDay();
     if (day !== 0 && day !== 6) bDays++;
   }
   return bDays;
@@ -4629,6 +4759,7 @@ async function loadAndRender({ force = false } = {}) {
     const meta = payload.meta || {};
     state.meta = meta;
     state.lastSeenUpdate = meta.lastUpdated;
+    updateMetricOptionAvailability();
 
     const asOfTs = meta.lastUpdated ? new Date(meta.lastUpdated).getTime() : ts;
     document.getElementById('lastUpdated').textContent = fmtTimestamp(asOfTs);
@@ -4739,9 +4870,8 @@ function wireEvents() {
   const perfMin = document.getElementById('perfRangeMin');
   const perfMax = document.getElementById('perfRangeMax');
   const perfLabel = document.getElementById('perfRangeLabel');
-  const fmtSigned = v => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v) + '%';
   function syncRangeLabel() {
-    perfLabel.textContent = `${fmtSigned(state.filters.minPerf)} … ${fmtSigned(state.filters.maxPerf)}`;
+    perfLabel.textContent = perfRangeText(state.filters.minPerf, state.filters.maxPerf);
   }
   function onRangeInput() {
     let lo = +perfMin.value, hi = +perfMax.value;
@@ -4828,12 +4958,20 @@ function wireEvents() {
   });
 
   // Zoom
-  document.getElementById('zoomIn').addEventListener('click', () =>
-    state.svg.transition().duration(400).call(state.zoom.scaleBy, 1.5));
-  document.getElementById('zoomOut').addEventListener('click', () =>
-    state.svg.transition().duration(400).call(state.zoom.scaleBy, 0.66));
-  document.getElementById('zoomReset').addEventListener('click', () =>
-    state.svg.transition().duration(500).call(state.zoom.transform, d3.zoomIdentity));
+  // Guard on state.zoom — it's only assigned after the topojson map loads, so a
+  // CDN failure would otherwise make these throw on click.
+  document.getElementById('zoomIn').addEventListener('click', () => {
+    if (!state.zoom || !state.svg) return;
+    state.svg.transition().duration(400).call(state.zoom.scaleBy, 1.5);
+  });
+  document.getElementById('zoomOut').addEventListener('click', () => {
+    if (!state.zoom || !state.svg) return;
+    state.svg.transition().duration(400).call(state.zoom.scaleBy, 0.66);
+  });
+  document.getElementById('zoomReset').addEventListener('click', () => {
+    if (!state.zoom || !state.svg) return;
+    state.svg.transition().duration(500).call(state.zoom.transform, d3.zoomIdentity);
+  });
 
   // Resize
   let resizeTimer;
@@ -4844,6 +4982,10 @@ function wireEvents() {
       if (state.histChart) state.histChart.resize();
       if (state.comparisonChart) state.comparisonChart.resize();
       if (state.scatterChart) state.scatterChart.resize();
+      // The treemap is SVG, not Chart.js, so it must be re-laid-out manually.
+      // Only when its tab is visible (it measures container width, which is 0
+      // while hidden); setActiveTab re-renders it on tab activation otherwise.
+      if (state.activeTab === 'compare' && state.data && state.data.length) renderTreemap();
     }, 200);
   });
 
@@ -4945,6 +5087,13 @@ function applyTheme(theme, { transition = false } = {}) {
   // map redraws with new ocean + heatmap stops, table picks up new badges.
   if (state && state.data && state.data.length) {
     renderAll();
+  }
+  // The detail drawer's chart lives outside renderAll(); rebuild it (without
+  // stealing focus) so its colours follow the theme while it's open.
+  const openDrawer = document.getElementById('detailDrawer');
+  if (openDrawer && openDrawer.classList.contains('open') && drawerChart) {
+    const c = document.getElementById('drawerTitle').textContent;
+    if (c) openCountryDrawer(c, { refocus: false });
   }
 }
 

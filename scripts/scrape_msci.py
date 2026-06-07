@@ -386,11 +386,20 @@ def fetch_etf_returns():
     results = {}
 
     def anchor_close(closes, target_date):
-        """Find the closest close price to a target date (within trading days)."""
+        """Most recent close on or before target_date — the correct return anchor.
+
+        `closes` is sorted ascending. The previous version picked the close with
+        the smallest *absolute* calendar distance, which could select a close that
+        falls *after* the target (e.g. when the target lands on a weekend/holiday),
+        biasing trailing returns. We now take the last close at or before the
+        target, falling back to the earliest available close when the ETF's
+        history starts after the target date (mirrors backfill_history.py)."""
         if len(closes) == 0:
             return None
-        diffs = [(abs((d.date() - target_date).days), float(closes.loc[d])) for d in closes.index]
-        return min(diffs, key=lambda x: x[0])[1]
+        prior = [float(closes.loc[d]) for d in closes.index if d.date() <= target_date]
+        if prior:
+            return prior[-1]
+        return float(closes.iloc[0])
 
     def ann_return(last_close, anchor, years):
         """Annualised return given last price, anchor price, and years between."""
@@ -531,24 +540,30 @@ def validate_sources(msci_data, etf_data, threshold=2.0):
 # =========================================================================
 # ORCHESTRATION
 # =========================================================================
-def build_output(market_data, source, validation=None):
+def build_output(market_data, source, validation=None, etf_data=None):
+    etf_data = etf_data or {}
     markets = []
     for country, meta in MARKETS.items():
         if country in market_data:
             d = market_data[country]
+            # The MSCI scrape path doesn't compute 6M / realised-vol / max-drawdown.
+            # When MSCI is the primary source, backfill those three from the ETF
+            # data (already fetched this run) so they aren't permanently null in
+            # the dashboard's 6M / Vol 1Y / Max DD 1Y views.
+            e = etf_data.get(country, {})
             markets.append({
                 'country':  country,
                 'day':      d.get('day'),
                 'mtd':      d.get('mtd'),
                 'threeMtd': d.get('threeMtd'),
-                'sixMtd':   d.get('sixMtd'),
+                'sixMtd':   d.get('sixMtd')   if d.get('sixMtd')   is not None else e.get('sixMtd'),
                 'ytd':      d.get('ytd'),
                 'oneYr':    d.get('oneYr'),
                 'threeYr':  d.get('threeYr'),
                 'fiveYr':   d.get('fiveYr'),
                 'tenYr':    d.get('tenYr'),
-                'vol1Y':    d.get('vol1Y'),
-                'maxDd1Y':  d.get('maxDd1Y'),
+                'vol1Y':    d.get('vol1Y')    if d.get('vol1Y')    is not None else e.get('vol1Y'),
+                'maxDd1Y':  d.get('maxDd1Y')  if d.get('maxDd1Y')  is not None else e.get('maxDd1Y'),
                 'region':   meta['region'],
                 'type':     meta['type'],
             })
@@ -722,18 +737,18 @@ async def main():
 
     if len(msci_data) >= 30:
         print(f"\n[OK] MSCI captured {len(msci_data)}/{len(MARKETS)} — using MSCI as PRIMARY source")
-        output = build_output(msci_data, source='MSCI', validation=validation)
+        output = build_output(msci_data, source='MSCI', validation=validation, etf_data=etf_data)
         primary_for_history = msci_data
     elif len(etf_data) >= 30:
         print(f"\n[OK] yfinance captured {len(etf_data)}/{len(MARKETS)} — using ETF proxy")
-        output = build_output(etf_data, source='ETF_PROXY', validation=validation)
+        output = build_output(etf_data, source='ETF_PROXY', validation=validation, etf_data=etf_data)
         primary_for_history = etf_data
     else:
         print(f"\n[ERR] Neither source ≥30 (MSCI={len(msci_data)}, ETF={len(etf_data)})", file=sys.stderr)
         if previous and previous.get('markets'):
             print("[OK] keeping previous data file")
             return 0
-        output = build_output(etf_data or msci_data, source='ETF_PROXY' if etf_data else 'MSCI' if msci_data else 'FAILED', validation=validation)
+        output = build_output(etf_data or msci_data, source='ETF_PROXY' if etf_data else 'MSCI' if msci_data else 'FAILED', validation=validation, etf_data=etf_data)
         # Don't append history on a FAILED run — only good data goes into the timeline.
 
     # Schema validation gate (Phase 4.2). If the output is clearly malformed
