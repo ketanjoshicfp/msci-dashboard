@@ -4729,7 +4729,7 @@ function renderDataSourceBanner(meta) {
     const tip = (v.discrepancies || []).slice(0, 6)
       .map(d => `${d.country} ${d.metric}: MSCI ${d.msci > 0 ? '+' : ''}${d.msci} vs ETF ${d.etf > 0 ? '+' : ''}${d.etf}`)
       .join(' · ');
-    extras += ` <span class="banner-chip ${tone}" title="${(tip || 'All metrics agree across sources').replace(/"/g, '&quot;')}">MSCI vs ETF: ${v.discrepancyCount} discrepancies / ${v.compared} compared</span>`;
+    
   }
   const bDays = businessDaysSince(meta.asOf);
   if (bDays !== null && bDays > 3) {
