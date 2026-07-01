@@ -1,7 +1,7 @@
 {
-  "lastUpdated": "2026-06-30T00:03:21+00:00",
+  "lastUpdated": "2026-07-01T00:06:10+00:00",
   "source": "MSCI",
-  "asOf": "2026-06-30",
+  "asOf": "2026-07-01",
   "marketsCount": 44,
   "expectedCount": 44,
   "markets": [
@@ -10,13 +10,13 @@
       "day": 1.27,
       "mtd": -1.75,
       "threeMtd": 14.08,
-      "sixMtd": 9.65,
+      "sixMtd": 9.97,
       "ytd": 8.61,
       "oneYr": 20.23,
       "threeYr": 19.31,
       "fiveYr": 11.15,
       "tenYr": 13.67,
-      "vol1Y": 12.03,
+      "vol1Y": 12.02,
       "maxDd1Y": -7.82,
       "region": "Americas",
       "type": "Developed"
@@ -26,13 +26,13 @@
       "day": -0.56,
       "mtd": -2.31,
       "threeMtd": 5.3,
-      "sixMtd": 5.4,
+      "sixMtd": 6.59,
       "ytd": 6.16,
       "oneYr": 25.16,
       "threeYr": 18.37,
       "fiveYr": 8.99,
       "tenYr": 8.77,
-      "vol1Y": 14.4,
+      "vol1Y": 14.35,
       "maxDd1Y": -8.51,
       "region": "Americas",
       "type": "Developed"
@@ -42,13 +42,13 @@
       "day": 0.34,
       "mtd": -3.19,
       "threeMtd": 4.17,
-      "sixMtd": 6.84,
+      "sixMtd": 7.84,
       "ytd": 6.39,
       "oneYr": 7.88,
       "threeYr": 8.03,
       "fiveYr": 2.02,
       "tenYr": 4.56,
-      "vol1Y": 17.32,
+      "vol1Y": 17.3,
       "maxDd1Y": -10.01,
       "region": "Asia-Pacific",
       "type": "Developed"
@@ -58,14 +58,14 @@
       "day": 0.67,
       "mtd": -7.83,
       "threeMtd": -6.63,
-      "sixMtd": -2.28,
+      "sixMtd": -0.94,
       "ytd": -1.95,
       "oneYr": 6.61,
       "threeYr": 3.08,
       "fiveYr": -4.45,
       "tenYr": 1.37,
-      "vol1Y": 16.46,
-      "maxDd1Y": -12.91,
+      "vol1Y": 16.48,
+      "maxDd1Y": -13.41,
       "region": "Asia-Pacific",
       "type": "Developed"
     },
@@ -74,7 +74,7 @@
       "day": 0.15,
       "mtd": -0.51,
       "threeMtd": 13.93,
-      "sixMtd": 15.74,
+      "sixMtd": 15.65,
       "ytd": 14.58,
       "oneYr": 27.59,
       "threeYr": 16.09,
@@ -90,13 +90,13 @@
       "day": 0.97,
       "mtd": -4.79,
       "threeMtd": 8.07,
-      "sixMtd": -1.4,
+      "sixMtd": -0.42,
       "ytd": 6.62,
       "oneYr": 4.92,
       "threeYr": 1.4,
       "fiveYr": -3.44,
       "tenYr": 1.09,
-      "vol1Y": 15.82,
+      "vol1Y": 15.81,
       "maxDd1Y": -12.92,
       "region": "Asia-Pacific",
       "type": "Developed"
@@ -106,13 +106,13 @@
       "day": 0.6,
       "mtd": 3.0,
       "threeMtd": 8.29,
-      "sixMtd": 10.23,
+      "sixMtd": 8.82,
       "ytd": 7.07,
       "oneYr": 15.65,
       "threeYr": 20.43,
       "fiveYr": 7.3,
       "tenYr": 4.86,
-      "vol1Y": 15.24,
+      "vol1Y": 15.26,
       "maxDd1Y": -7.82,
       "region": "Asia-Pacific",
       "type": "Developed"
@@ -122,13 +122,13 @@
       "day": -0.18,
       "mtd": -13.6,
       "threeMtd": 1.83,
-      "sixMtd": 9.69,
+      "sixMtd": 10.27,
       "ytd": 4.0,
       "oneYr": 16.41,
       "threeYr": 28.07,
       "fiveYr": 9.57,
       "tenYr": 5.43,
-      "vol1Y": 23.29,
+      "vol1Y": 23.12,
       "maxDd1Y": -13.9,
       "region": "EMEA",
       "type": "Developed"
@@ -138,13 +138,13 @@
       "day": -0.16,
       "mtd": 4.82,
       "threeMtd": 17.45,
-      "sixMtd": 20.6,
+      "sixMtd": 23.19,
       "ytd": 13.39,
       "oneYr": 46.86,
       "threeYr": 34.39,
       "fiveYr": 14.53,
       "tenYr": 13.4,
-      "vol1Y": 19.37,
+      "vol1Y": 19.39,
       "maxDd1Y": -14.07,
       "region": "EMEA",
       "type": "Developed"
@@ -154,13 +154,13 @@
       "day": 0.08,
       "mtd": 3.25,
       "threeMtd": 15.23,
-      "sixMtd": 12.36,
+      "sixMtd": 13.12,
       "ytd": 13.23,
       "oneYr": 30.69,
       "threeYr": 20.53,
       "fiveYr": 6.67,
       "tenYr": 1.98,
-      "vol1Y": 15.51,
+      "vol1Y": 15.5,
       "maxDd1Y": -15.47,
       "region": "EMEA",
       "type": "Developed"
@@ -170,7 +170,7 @@
       "day": 0.12,
       "mtd": 1.26,
       "threeMtd": 14.02,
-      "sixMtd": -3.24,
+      "sixMtd": -2.47,
       "ytd": -4.19,
       "oneYr": -12.89,
       "threeYr": -6.36,
@@ -186,13 +186,13 @@
       "day": 0.25,
       "mtd": -7.03,
       "threeMtd": 10.33,
-      "sixMtd": 11.08,
+      "sixMtd": 12.86,
       "ytd": 10.95,
       "oneYr": 32.7,
       "threeYr": 15.86,
       "fiveYr": 2.56,
       "tenYr": 6.07,
-      "vol1Y": 18.85,
+      "vol1Y": 18.9,
       "maxDd1Y": -9.78,
       "region": "EMEA",
       "type": "Developed"
@@ -202,13 +202,13 @@
       "day": 0.05,
       "mtd": 0.11,
       "threeMtd": 6.08,
-      "sixMtd": 2.36,
+      "sixMtd": 3.39,
       "ytd": 0.27,
       "oneYr": 6.24,
       "threeYr": 6.39,
       "fiveYr": 3.89,
       "tenYr": 7.46,
-      "vol1Y": 17.63,
+      "vol1Y": 17.64,
       "maxDd1Y": -13.8,
       "region": "EMEA",
       "type": "Developed"
@@ -218,13 +218,13 @@
       "day": 0.05,
       "mtd": -4.75,
       "threeMtd": 4.52,
-      "sixMtd": -2.11,
+      "sixMtd": -0.73,
       "ytd": -4.55,
       "oneYr": -3.49,
       "threeYr": 13.3,
       "fiveYr": 3.46,
       "tenYr": 5.92,
-      "vol1Y": 17.52,
+      "vol1Y": 17.55,
       "maxDd1Y": -14.54,
       "region": "EMEA",
       "type": "Developed"
@@ -234,13 +234,13 @@
       "day": -0.83,
       "mtd": 1.58,
       "threeMtd": 12.47,
-      "sixMtd": 7.75,
+      "sixMtd": 8.11,
       "ytd": -0.07,
       "oneYr": 16.09,
       "threeYr": 19.17,
       "fiveYr": 8.42,
       "tenYr": 8.78,
-      "vol1Y": 17.99,
+      "vol1Y": 18.0,
       "maxDd1Y": -14.28,
       "region": "EMEA",
       "type": "Developed"
@@ -250,7 +250,7 @@
       "day": -0.04,
       "mtd": -0.03,
       "threeMtd": 11.39,
-      "sixMtd": 9.98,
+      "sixMtd": 11.54,
       "ytd": 7.29,
       "oneYr": 22.11,
       "threeYr": 23.72,
@@ -266,13 +266,13 @@
       "day": 1.86,
       "mtd": 7.38,
       "threeMtd": 29.54,
-      "sixMtd": 22.04,
+      "sixMtd": 24.61,
       "ytd": 32.89,
       "oneYr": 49.22,
       "threeYr": 22.53,
       "fiveYr": 10.38,
       "tenYr": 13.9,
-      "vol1Y": 21.17,
+      "vol1Y": 21.24,
       "maxDd1Y": -13.24,
       "region": "EMEA",
       "type": "Developed"
@@ -282,7 +282,7 @@
       "day": 0.44,
       "mtd": -13.38,
       "threeMtd": -16.2,
-      "sixMtd": 13.52,
+      "sixMtd": 13.57,
       "ytd": 9.68,
       "oneYr": 11.23,
       "threeYr": 13.51,
@@ -314,13 +314,13 @@
       "day": 0.29,
       "mtd": 4.23,
       "threeMtd": 13.18,
-      "sixMtd": 11.67,
+      "sixMtd": 12.16,
       "ytd": 9.31,
       "oneYr": 38.3,
       "threeYr": 30.61,
       "fiveYr": 17.51,
       "tenYr": 10.83,
-      "vol1Y": 18.77,
+      "vol1Y": 18.76,
       "maxDd1Y": -11.38,
       "region": "EMEA",
       "type": "Developed"
@@ -330,7 +330,7 @@
       "day": 0.4,
       "mtd": -4.53,
       "threeMtd": 4.07,
-      "sixMtd": 2.3,
+      "sixMtd": 3.74,
       "ytd": -0.45,
       "oneYr": 7.96,
       "threeYr": 13.43,
@@ -346,13 +346,13 @@
       "day": 0.59,
       "mtd": 1.67,
       "threeMtd": 10.94,
-      "sixMtd": 6.32,
+      "sixMtd": 5.98,
       "ytd": 5.41,
       "oneYr": 17.25,
       "threeYr": 11.71,
       "fiveYr": 5.33,
       "tenYr": 7.76,
-      "vol1Y": 15.81,
+      "vol1Y": 15.82,
       "maxDd1Y": -13.48,
       "region": "EMEA",
       "type": "Developed"
@@ -362,7 +362,7 @@
       "day": 0.11,
       "mtd": -1.17,
       "threeMtd": 2.92,
-      "sixMtd": 5.81,
+      "sixMtd": 6.32,
       "ytd": 3.92,
       "oneYr": 15.5,
       "threeYr": 13.67,
@@ -378,13 +378,13 @@
       "day": -0.22,
       "mtd": -2.92,
       "threeMtd": -8.63,
-      "sixMtd": 10.3,
+      "sixMtd": 11.22,
       "ytd": 8.41,
       "oneYr": 23.43,
       "threeYr": 3.13,
       "fiveYr": -2.85,
       "tenYr": 1.99,
-      "vol1Y": 25.12,
+      "vol1Y": 25.0,
       "maxDd1Y": -19.27,
       "region": "Americas",
       "type": "Emerging"
@@ -394,13 +394,13 @@
       "day": 0.18,
       "mtd": -2.91,
       "threeMtd": 0.84,
-      "sixMtd": 0.54,
+      "sixMtd": 0.64,
       "ytd": -1.9,
       "oneYr": 29.58,
       "threeYr": 12.76,
       "fiveYr": 6.78,
       "tenYr": 1.22,
-      "vol1Y": 25.49,
+      "vol1Y": 25.47,
       "maxDd1Y": -19.74,
       "region": "Americas",
       "type": "Emerging"
@@ -426,13 +426,13 @@
       "day": -1.11,
       "mtd": -1.31,
       "threeMtd": 3.79,
-      "sixMtd": 13.63,
+      "sixMtd": 17.97,
       "ytd": 25.13,
       "oneYr": 71.95,
       "threeYr": 40.09,
       "fiveYr": 25.01,
       "tenYr": 12.29,
-      "vol1Y": 31.24,
+      "vol1Y": 31.26,
       "maxDd1Y": -20.85,
       "region": "Americas",
       "type": "Emerging"
@@ -442,13 +442,13 @@
       "day": 0.2,
       "mtd": -2.35,
       "threeMtd": 2.5,
-      "sixMtd": 8.56,
+      "sixMtd": 8.32,
       "ytd": 9.99,
       "oneYr": 28.36,
       "threeYr": 7.97,
       "fiveYr": 9.5,
       "tenYr": 4.65,
-      "vol1Y": 21.88,
+      "vol1Y": 21.91,
       "maxDd1Y": -13.98,
       "region": "Americas",
       "type": "Emerging"
@@ -458,13 +458,13 @@
       "day": 1.85,
       "mtd": -7.67,
       "threeMtd": -7.66,
-      "sixMtd": -16.56,
+      "sixMtd": -14.92,
       "ytd": -15.97,
       "oneYr": -7.58,
       "threeYr": 5.1,
       "fiveYr": -8.82,
       "tenYr": 2.44,
-      "vol1Y": 20.2,
+      "vol1Y": 20.21,
       "maxDd1Y": -23.22,
       "region": "Asia-Pacific",
       "type": "Emerging"
@@ -474,14 +474,14 @@
       "day": -0.7,
       "mtd": 1.43,
       "threeMtd": 9.94,
-      "sixMtd": -8.66,
+      "sixMtd": -7.63,
       "ytd": -10.16,
       "oneYr": -13.04,
       "threeYr": 5.92,
       "fiveYr": 4.57,
       "tenYr": 7.62,
-      "vol1Y": 14.89,
-      "maxDd1Y": -18.69,
+      "vol1Y": 14.9,
+      "maxDd1Y": -18.66,
       "region": "Asia-Pacific",
       "type": "Emerging"
     },
@@ -490,13 +490,13 @@
       "day": -1.82,
       "mtd": -5.78,
       "threeMtd": -25.27,
-      "sixMtd": -35.67,
+      "sixMtd": -38.22,
       "ytd": -41.43,
       "oneYr": -41.18,
       "threeYr": -23.43,
       "fiveYr": -11.09,
       "tenYr": -6.72,
-      "vol1Y": 25.55,
+      "vol1Y": 25.69,
       "maxDd1Y": -43.81,
       "region": "Asia-Pacific",
       "type": "Emerging"
@@ -506,13 +506,13 @@
       "day": -2.09,
       "mtd": -0.84,
       "threeMtd": 85.34,
-      "sixMtd": 106.07,
+      "sixMtd": 104.52,
       "ytd": 115.11,
       "oneYr": 209.97,
       "threeYr": 50.72,
       "fiveYr": 18.13,
       "tenYr": 16.25,
-      "vol1Y": 49.2,
+      "vol1Y": 49.22,
       "maxDd1Y": -23.08,
       "region": "Asia-Pacific",
       "type": "Emerging"
@@ -522,13 +522,13 @@
       "day": 0.33,
       "mtd": -4.05,
       "threeMtd": -1.81,
-      "sixMtd": -0.18,
+      "sixMtd": -0.08,
       "ytd": -1.12,
       "oneYr": 12.28,
       "threeYr": 10.51,
       "fiveYr": 1.05,
       "tenYr": -1.1,
-      "vol1Y": 14.19,
+      "vol1Y": 14.16,
       "maxDd1Y": -10.61,
       "region": "Asia-Pacific",
       "type": "Emerging"
@@ -538,13 +538,13 @@
       "day": 1.29,
       "mtd": 10.2,
       "threeMtd": 6.2,
-      "sixMtd": 0.21,
+      "sixMtd": -1.82,
       "ytd": 1.54,
       "oneYr": -4.42,
       "threeYr": -0.94,
       "fiveYr": -4.06,
       "tenYr": -3.67,
-      "vol1Y": 20.36,
+      "vol1Y": 20.45,
       "maxDd1Y": -15.9,
       "region": "Asia-Pacific",
       "type": "Emerging"
@@ -554,13 +554,13 @@
       "day": 1.12,
       "mtd": -1.64,
       "threeMtd": 44.67,
-      "sixMtd": 67.87,
+      "sixMtd": 71.5,
       "ytd": 57.48,
       "oneYr": 91.26,
       "threeYr": 44.58,
       "fiveYr": 20.68,
       "tenYr": 20.46,
-      "vol1Y": 27.99,
+      "vol1Y": 28.07,
       "maxDd1Y": -10.51,
       "region": "Asia-Pacific",
       "type": "Emerging"
@@ -570,13 +570,13 @@
       "day": 3.03,
       "mtd": -2.56,
       "threeMtd": 6.58,
-      "sixMtd": 19.11,
+      "sixMtd": 25.21,
       "ytd": 20.69,
       "oneYr": 48.62,
       "threeYr": 7.19,
       "fiveYr": 1.47,
       "tenYr": 2.05,
-      "vol1Y": 22.64,
+      "vol1Y": 22.69,
       "maxDd1Y": -13.12,
       "region": "Asia-Pacific",
       "type": "Emerging"
@@ -586,13 +586,13 @@
       "day": -0.16,
       "mtd": -7.31,
       "threeMtd": -3.16,
-      "sixMtd": -7.82,
+      "sixMtd": -5.63,
       "ytd": -7.45,
       "oneYr": 26.87,
       "threeYr": 21.0,
       "fiveYr": 6.94,
       "tenYr": 4.56,
-      "vol1Y": 32.19,
+      "vol1Y": 32.13,
       "maxDd1Y": -23.31,
       "region": "EMEA",
       "type": "Emerging"
@@ -618,13 +618,13 @@
       "day": -1.47,
       "mtd": -2.66,
       "threeMtd": -5.11,
-      "sixMtd": 3.83,
+      "sixMtd": 4.1,
       "ytd": 3.02,
       "oneYr": 0.31,
       "threeYr": -2.15,
       "fiveYr": -0.69,
       "tenYr": 5.32,
-      "vol1Y": 16.45,
+      "vol1Y": 16.44,
       "maxDd1Y": -11.62,
       "region": "EMEA",
       "type": "Emerging"
@@ -634,13 +634,13 @@
       "day": -0.58,
       "mtd": 4.3,
       "threeMtd": 6.92,
-      "sixMtd": 1.64,
+      "sixMtd": 0.38,
       "ytd": -2.48,
       "oneYr": 2.68,
       "threeYr": 10.66,
       "fiveYr": 6.57,
       "tenYr": 3.66,
-      "vol1Y": 22.86,
+      "vol1Y": 22.87,
       "maxDd1Y": -21.5,
       "region": "EMEA",
       "type": "Emerging"
@@ -650,7 +650,7 @@
       "day": 0.0,
       "mtd": -2.73,
       "threeMtd": 0.67,
-      "sixMtd": -1.27,
+      "sixMtd": -1.33,
       "ytd": -5.4,
       "oneYr": -3.25,
       "threeYr": 0.48,
@@ -666,13 +666,13 @@
       "day": -0.84,
       "mtd": 2.16,
       "threeMtd": 3.82,
-      "sixMtd": 13.63,
+      "sixMtd": 14.38,
       "ytd": 16.91,
       "oneYr": 28.86,
       "threeYr": 13.67,
       "fiveYr": 13.62,
       "tenYr": -1.23,
-      "vol1Y": 25.4,
+      "vol1Y": 24.76,
       "maxDd1Y": -16.07,
       "region": "EMEA",
       "type": "Emerging"
@@ -682,13 +682,13 @@
       "day": 0.01,
       "mtd": -7.56,
       "threeMtd": 6.12,
-      "sixMtd": 10.13,
+      "sixMtd": 11.26,
       "ytd": 7.0,
       "oneYr": 21.67,
       "threeYr": 23.65,
       "fiveYr": 9.31,
       "tenYr": 6.85,
-      "vol1Y": 23.38,
+      "vol1Y": 23.32,
       "maxDd1Y": -11.04,
       "region": "EMEA",
       "type": "Emerging"
@@ -698,13 +698,13 @@
       "day": 1.27,
       "mtd": 0.58,
       "threeMtd": 19.58,
-      "sixMtd": 12.42,
+      "sixMtd": 14.21,
       "ytd": 11.64,
       "oneYr": 25.4,
       "threeYr": 27.83,
       "fiveYr": 21.84,
       "tenYr": 10.06,
-      "vol1Y": 24.13,
+      "vol1Y": 24.17,
       "maxDd1Y": -21.32,
       "region": "EMEA",
       "type": "Emerging"
@@ -713,357 +713,357 @@
   "validation": {
     "compared": 44,
     "threshold": 2.0,
-    "discrepancyCount": 192,
+    "discrepancyCount": 179,
     "discrepancies": [
       {
         "country": "USA",
         "metric": "MTD",
         "msci": -1.75,
-        "etf": 1.58,
-        "diff": -3.33
+        "etf": 1.64,
+        "diff": -3.39
       },
       {
         "country": "USA",
         "metric": "YTD",
         "msci": 8.61,
-        "etf": 11.08,
-        "diff": -2.47
+        "etf": 11.15,
+        "diff": -2.54
       },
       {
         "country": "USA",
         "metric": "1Y",
         "msci": 20.23,
-        "etf": 17.64,
-        "diff": 2.59
+        "etf": 17.04,
+        "diff": 3.19
       },
       {
         "country": "USA",
         "metric": "3Y",
         "msci": 19.31,
-        "etf": 14.92,
-        "diff": 4.39
+        "etf": 14.94,
+        "diff": 4.37
       },
       {
         "country": "USA",
         "metric": "5Y",
         "msci": 11.15,
-        "etf": 7.88,
-        "diff": 3.27
-      },
-      {
-        "country": "Canada",
-        "metric": "3MTD",
-        "msci": 5.3,
-        "etf": 8.12,
-        "diff": -2.82
-      },
-      {
-        "country": "Canada",
-        "metric": "1Y",
-        "msci": 25.16,
-        "etf": 27.85,
-        "diff": -2.69
+        "etf": 7.78,
+        "diff": 3.37
       },
       {
         "country": "Canada",
         "metric": "5Y",
         "msci": 8.99,
-        "etf": 11.27,
-        "diff": -2.28
+        "etf": 11.12,
+        "diff": -2.13
       },
       {
         "country": "Canada",
         "metric": "10Y",
         "msci": 8.77,
-        "etf": 11.03,
-        "diff": -2.26
+        "etf": 11.06,
+        "diff": -2.29
       },
       {
         "country": "Australia",
         "metric": "YTD",
         "msci": 6.39,
-        "etf": 8.84,
-        "diff": -2.45
+        "etf": 9.03,
+        "diff": -2.64
       },
       {
         "country": "Australia",
         "metric": "1Y",
         "msci": 7.88,
-        "etf": 11.12,
-        "diff": -3.24
+        "etf": 10.35,
+        "diff": -2.47
       },
       {
         "country": "Australia",
         "metric": "3Y",
         "msci": 8.03,
-        "etf": 11.35,
-        "diff": -3.32
+        "etf": 11.41,
+        "diff": -3.38
       },
       {
         "country": "Australia",
         "metric": "5Y",
         "msci": 2.02,
-        "etf": 5.85,
-        "diff": -3.83
+        "etf": 5.96,
+        "diff": -3.94
       },
       {
         "country": "Australia",
         "metric": "10Y",
         "msci": 4.56,
-        "etf": 8.07,
-        "diff": -3.51
-      },
-      {
-        "country": "Hong Kong",
-        "metric": "3MTD",
-        "msci": -6.63,
-        "etf": -4.33,
-        "diff": -2.3
-      },
-      {
-        "country": "Hong Kong",
-        "metric": "YTD",
-        "msci": -1.95,
-        "etf": 0.76,
-        "diff": -2.71
+        "etf": 8.09,
+        "diff": -3.53
       },
       {
         "country": "Hong Kong",
         "metric": "1Y",
         "msci": 6.61,
-        "etf": 10.99,
-        "diff": -4.38
+        "etf": 10.48,
+        "diff": -3.87
       },
       {
         "country": "Hong Kong",
         "metric": "3Y",
         "msci": 3.08,
-        "etf": 7.69,
-        "diff": -4.61
+        "etf": 7.43,
+        "diff": -4.35
       },
       {
         "country": "Hong Kong",
         "metric": "5Y",
         "msci": -4.45,
-        "etf": -0.93,
-        "diff": -3.52
+        "etf": -1.1,
+        "diff": -3.35
       },
       {
         "country": "Hong Kong",
         "metric": "10Y",
         "msci": 1.37,
-        "etf": 4.17,
-        "diff": -2.8
+        "etf": 4.1,
+        "diff": -2.73
+      },
+      {
+        "country": "Japan",
+        "metric": "3MTD",
+        "msci": 13.93,
+        "etf": 11.06,
+        "diff": 2.87
+      },
+      {
+        "country": "Japan",
+        "metric": "1Y",
+        "msci": 27.59,
+        "etf": 29.77,
+        "diff": -2.18
       },
       {
         "country": "Japan",
         "metric": "5Y",
         "msci": 7.13,
-        "etf": 9.22,
-        "diff": -2.09
+        "etf": 9.25,
+        "diff": -2.12
+      },
+      {
+        "country": "New Zealand",
+        "metric": "3MTD",
+        "msci": 8.07,
+        "etf": 6.02,
+        "diff": 2.05
       },
       {
         "country": "New Zealand",
         "metric": "YTD",
         "msci": 6.62,
-        "etf": -0.4,
-        "diff": 7.02
+        "etf": -0.12,
+        "diff": 6.74
       },
       {
         "country": "New Zealand",
         "metric": "1Y",
         "msci": 4.92,
-        "etf": 0.64,
-        "diff": 4.28
-      },
-      {
-        "country": "New Zealand",
-        "metric": "3Y",
-        "msci": 1.4,
-        "etf": -0.63,
-        "diff": 2.03
+        "etf": 0.4,
+        "diff": 4.52
       },
       {
         "country": "New Zealand",
         "metric": "10Y",
         "msci": 1.09,
-        "etf": 3.17,
-        "diff": -2.08
+        "etf": 3.2,
+        "diff": -2.11
       },
       {
         "country": "Singapore",
         "metric": "YTD",
         "msci": 7.07,
-        "etf": 10.39,
-        "diff": -3.32
+        "etf": 9.57,
+        "diff": -2.5
       },
       {
         "country": "Singapore",
         "metric": "1Y",
         "msci": 15.65,
-        "etf": 20.1,
-        "diff": -4.45
-      },
-      {
-        "country": "Singapore",
-        "metric": "3Y",
-        "msci": 20.43,
-        "etf": 22.59,
-        "diff": -2.16
+        "etf": 18.89,
+        "diff": -3.24
       },
       {
         "country": "Singapore",
         "metric": "5Y",
         "msci": 7.3,
-        "etf": 10.31,
-        "diff": -3.01
+        "etf": 10.21,
+        "diff": -2.91
       },
       {
         "country": "Singapore",
         "metric": "10Y",
         "msci": 4.86,
-        "etf": 7.75,
-        "diff": -2.89
+        "etf": 7.67,
+        "diff": -2.81
       },
       {
         "country": "Israel",
         "metric": "3MTD",
         "msci": 1.83,
-        "etf": 9.16,
-        "diff": -7.33
+        "etf": 4.65,
+        "diff": -2.82
       },
       {
         "country": "Israel",
         "metric": "YTD",
         "msci": 4.0,
-        "etf": 9.36,
-        "diff": -5.36
+        "etf": 10.36,
+        "diff": -6.36
       },
       {
         "country": "Israel",
         "metric": "1Y",
         "msci": 16.41,
-        "etf": 31.97,
-        "diff": -15.56
+        "etf": 29.27,
+        "diff": -12.86
       },
       {
         "country": "Israel",
         "metric": "3Y",
         "msci": 28.07,
-        "etf": 32.54,
-        "diff": -4.47
+        "etf": 32.95,
+        "diff": -4.88
       },
       {
         "country": "Israel",
         "metric": "5Y",
         "msci": 9.57,
-        "etf": 13.14,
-        "diff": -3.57
+        "etf": 13.35,
+        "diff": -3.78
       },
       {
         "country": "Israel",
         "metric": "10Y",
         "msci": 5.43,
-        "etf": 11.35,
-        "diff": -5.92
+        "etf": 11.45,
+        "diff": -6.02
       },
       {
         "country": "Austria",
         "metric": "3MTD",
         "msci": 17.45,
-        "etf": 24.0,
-        "diff": -6.55
+        "etf": 21.83,
+        "diff": -4.38
       },
       {
         "country": "Austria",
         "metric": "YTD",
         "msci": 13.39,
-        "etf": 19.98,
-        "diff": -6.59
+        "etf": 21.76,
+        "diff": -8.37
       },
       {
         "country": "Austria",
         "metric": "5Y",
         "msci": 14.53,
-        "etf": 17.16,
-        "diff": -2.63
+        "etf": 17.08,
+        "diff": -2.55
+      },
+      {
+        "country": "Austria",
+        "metric": "10Y",
+        "msci": 13.4,
+        "etf": 15.54,
+        "diff": -2.14
+      },
+      {
+        "country": "Belgium",
+        "metric": "3MTD",
+        "msci": 15.23,
+        "etf": 12.71,
+        "diff": 2.52
       },
       {
         "country": "Belgium",
         "metric": "1Y",
         "msci": 30.69,
-        "etf": 24.64,
-        "diff": 6.05
+        "etf": 25.09,
+        "diff": 5.6
       },
       {
         "country": "Belgium",
         "metric": "3Y",
         "msci": 20.53,
-        "etf": 17.61,
-        "diff": 2.92
+        "etf": 17.7,
+        "diff": 2.83
       },
       {
         "country": "Belgium",
         "metric": "10Y",
         "msci": 1.98,
-        "etf": 6.99,
-        "diff": -5.01
+        "etf": 7.02,
+        "diff": -5.04
       },
       {
         "country": "Denmark",
         "metric": "3MTD",
         "msci": 14.02,
-        "etf": 10.66,
-        "diff": 3.36
+        "etf": 7.23,
+        "diff": 6.79
+      },
+      {
+        "country": "Denmark",
+        "metric": "YTD",
+        "msci": -4.19,
+        "etf": -1.93,
+        "diff": -2.26
       },
       {
         "country": "Denmark",
         "metric": "1Y",
         "msci": -12.89,
-        "etf": -0.4,
-        "diff": -12.49
+        "etf": 0.06,
+        "diff": -12.95
       },
       {
         "country": "Denmark",
         "metric": "3Y",
         "msci": -6.36,
-        "etf": 3.01,
-        "diff": -9.37
+        "etf": 3.14,
+        "diff": -9.5
       },
       {
         "country": "Denmark",
         "metric": "5Y",
         "msci": -1.73,
-        "etf": 2.21,
-        "diff": -3.94
+        "etf": 2.08,
+        "diff": -3.81
       },
       {
         "country": "Denmark",
         "metric": "10Y",
         "msci": 5.48,
-        "etf": 8.86,
-        "diff": -3.38
-      },
-      {
-        "country": "Finland",
-        "metric": "1Y",
-        "msci": 32.7,
-        "etf": 30.35,
-        "diff": 2.35
+        "etf": 8.91,
+        "diff": -3.43
       },
       {
         "country": "Finland",
         "metric": "3Y",
         "msci": 15.86,
-        "etf": 18.82,
-        "diff": -2.96
+        "etf": 19.41,
+        "diff": -3.55
       },
       {
         "country": "Finland",
         "metric": "5Y",
         "msci": 2.56,
-        "etf": 5.36,
-        "diff": -2.8
+        "etf": 5.57,
+        "diff": -3.01
+      },
+      {
+        "country": "Finland",
+        "metric": "10Y",
+        "msci": 6.07,
+        "etf": 9.32,
+        "diff": -3.25
       }
     ]
   }
